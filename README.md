@@ -13,7 +13,7 @@ Writing about debugging in the void is very difficult and since I haven't been s
 
 ## TOC
 
-## [General Methodologies](./methodologies.md)
+## [General Methodology](./methodology.md)
 
 ## [Debugging Python](./python.md)
 
@@ -22,6 +22,8 @@ Writing about debugging in the void is very difficult and since I haven't been s
 
 ## Fodder
 
+Debugging Unix Tools:
+
 bash -x, bash -eo pipe
 make -n
 
@@ -29,7 +31,7 @@ make -n
 
 ## Contributing
 
-If you found a bug, typo or would like to propose an improvement please don't hesitate to open an [Issue](/Issue) or contribute a PR.
+If you found a bug, typo or would like to propose an improvement please don't hesitate to open an [Issue](/Issues) or contribute a PR.
 
 
 ## License
