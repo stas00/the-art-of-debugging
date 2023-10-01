@@ -13,11 +13,18 @@ Writing about debugging in the void is very difficult and since I haven't been s
 
 ## TOC
 
-## [Quick Iterations, Small Payload](./quick-and-small.md)
+## [General Methodologies](./methodologies.md)
 
 ## [Debugging Python](./python.md)
 
 ## [Debugging Compiled Programs](./compiled.md)
+
+
+## Fodder
+
+bash -x, bash -eo pipe
+make -n
+
 
 
 ## Contributing
