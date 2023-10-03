@@ -214,10 +214,30 @@ htop --sort-key help
 
 ## Power of One-liners
 
-big import failing - move it into a single import one liner.
+Big import failing - move it into a single import one liner.
 
 
-## Dealing with running out of memory usage
+```
+python -c 'import sys; from transformers import AutoModel; AutoModel.from_pretrained(sys.argv[1])' t5-small
+python -c 'import sys; from transformers import AutoTokenizer; AutoTokenizer.from_pretrained(sys.argv[1])' t5-small
+python -c 'import sys; from transformers import AutoConfig; AutoConfig.from_pretrained(sys.argv[1])' t5-small
+```
+
+
+## Running out of resources: disc space, cpu memory, gpu memory
+
+
+
+### emulate an almost full partition
+
+cd /tmp
+
+dd if=/dev/zero of=1g.bin bs=1G count=28
+
+
+
+
+### Dealing with running out of cpu memory
 
 CPU memory:
 
@@ -228,7 +248,12 @@ meanwhile to watch RSS grow by 1gb:
 watch -n 0.5 $'(ps auxc | head -1; ps auxc | grep perl | perl -plae \'$F[5]=sprintf q[%0.3fGB],$F[5]/2**20; $_=qq[@F]\') | column -t'
 
 
+### Dealing with running out of gpu memory
+
 I also created some helpful tools for pre-filling GPU memory - XXX: ipyexperiments
+
+
+### Emulating limited resources
 
 
 but sometimes a much better approach is to create a special shell where you limit the resources to a controlled amount
@@ -250,6 +275,9 @@ echo $MEMLIMIT
 100GB
 # additional properties are here: https://www.freedesktop.org/software/systemd/man/systemd.resource-control.html#
 ```
+
+
+
 
 ## Finding a breaking commit by bisecting revisions
 
@@ -410,11 +438,16 @@ strace comes to help:
 ```
 
 
-## emulate an almost full partition
-
-cd /tmp
-
-dd if=/dev/zero of=1g.bin bs=1G count=28
+## blackbox approach to complex systems
 
 
-## emulate an almost full gpu
+
+## when to use print vs CLI debugger vs IDE debugger
+
+Usually one has three major approaches to debugging the variables and states inside software: manually injected `print`,
+
+For a quick
+
+IDE Debuggers
+
+Tools like [PyCharm](https://www.jetbrains.com/pycharm/) have incre
