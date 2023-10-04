@@ -117,6 +117,229 @@ This is also why notebook technologies like [Jupyter Notebook](./https://jupyter
 
 A need for a file auto-save falls into this category as well. Since edit-try, edit-try, edit-try cycle is always repeated in the debug process, if the edited change isn't always saved before it's tried, the exact same problem of testing the wrong hypotheses occurs and the discovery of a working solution could be missed completely.
 
+Going back to the proposition of using `;` to concatenate multiple commands - this approach will always execute each command regardless of whether it succeeded or not. In some situations where any of the commands might fail you might want to use `&&` instead of `;` to do the concatenation so instead of doing:
+
+```
+rm -r data; echo start; ./launch.sh
+```
+you may choose to do:
+
+```
+rm -r data && echo start && ./launch.sh
+```
+now the next command in the sequence will only be executed if the previous one was successful.
+
+## Alias frequently used commands
+
+If you repeat the same commands often - use aliases. Especially in situations when commands use multiple difficult to remember flags.
+
+suggestion: always add a few aliases at a time and start using them before adding new aliases. Like learning a new new languages if you don't use it you lose it.
+
+Here are some practical examples of aliases that I type probably dozens of times daily:
+
+```
+# here is how I launch pytest
+alias pyt="pytest --disable-warnings --instafail -rA"
+
+# this is how I tell pytest to show me all the available tests
+alias pytc="pytest --disable-warnings --collect-only -q"
+```
+
+Some aliases are easier to write as functions, but essentially they act the same as aliases. Examples:
+
+```
+# this is the most used alias
+function l()  { ls -lNhF   --color=always "${@-.}" |more; }
+
+# same as l but sort by latest
+function lt() { ls -lNhtF  --color=always "${@-.}" |more; }
+
+# same as l but include dot files
+function la() { ls -lNhaF  --color=always "${@-.}" |more; }
+```
+
+principle: the more often the alias is used the less letters it should have. As I use `ls -lNhF   --color=always "${@-.}" |more` probably hundreds of times a day, I gave it a single letter. Other less often used `ls` aliases use more than one letter.
+
+principle: have all the aliases for the same tool start with the same letter or letters. In the example above all `ls` candidates start with `l` (but of course, there could be other `l`-starting aliases that aren't aliases for `ls`. Another example is that all my `git` aliases start with `g`, e.g. I use `gp` to push and `gc` to commit since these are the most often used git commands that I use.
+
+Aliases can be a problem when you write documentation and start accidentally including your command line dumps that includes aliases, but others don't have them and suddenly the code instructions in docs work only for you.
+
+To see if something is an alias, use `type`:
+```
+$ type l
+l is a function
+l ()
+{
+    ls --color=auto -lNhF --color=always "${@-.}" | more
+}
+
+$ type pyt
+pyt is aliased to `pytest --disable-warnings --instafail -rA'
+```
+
+As mentioned functions are more flexible than aliases since they allow arguments. Examples:
+
+```
+function wrap()       { tar -czf "$1.tgz" "$1"; }
+function wraprar()    { rar a -rr -m5 "$1.rar" "$1"; }
+```
+and also you can do crazy things like:
+```
+# usage: git-replace oldstr newstr
+#
+function git-replace () {
+    files=$(git grep -l "$1")
+    if [[ ! -z "$files" ]];
+    then
+        perl -pi -e "s|$1|$2|g" $files
+	    git diff --shortstat
+    else
+        echo "no match for: $1"
+        false
+    fi
+}
+```
+This handy function replaces one string with another in all files under git.
+
+If you aliased a program with the same name as the program itself:
+```
+alias df="/bin/df -h | grep -v /dev/loop"
+```
+and you want to do something different you then have to use the full path to the program:
+```
+/bin/df -ih
+```
+and then the alias won't be activated.
+
+In the above example, I use `df` with human formatted sizes and I don't want to see dozens of `/dev/loop` entries. But sometimes I want to see inodes count, so I'd use `/bin/df -ih`. I could have created an alias for it, but I do it so rarely that I don't want to pollute my limited memory space in my head.
+
+
+# Cheatsheets
+
+While aliases are super handy, too many aliases can be difficult to remember so it's also very useful to have topical cheatsheets. I have a cheatsheet for git, python, gdb, transformers, conda, pip, bash, etc. In those cheatsheets I write very dense one line comments of what the following line does and I constantly improve them. This helps me to map things out and know where I can quickly find a specific solution.
+
+For example here is a snipped of my git cheatsheet:
+
+```
+# ranges illustration
+A ─┬─ E ── F ── G   master
+   └─ B ── C ── D   fix
+git log master..fix 	BCD
+git log master...fix 	BCD and EFG
+
+git log master 	      reachable parents from master
+git log ^master 	  exclude reachable parents from master
+git log master..fix   reachable from fix but not master
+git log master...fix  reachable from fix and master, but not both
+git log HEAD^@ 	      parents of HEAD
+git log HEAD^! 	      HEAD, then excluding parents’s ancestors
+git log HEAD^{:/fix}  search previous HEADs matching criteria
+
+
+# reset branch's HEAD to a given commit hash:
+# find the last commit that was supposed to be the HEAD, e.g.:
+# https://github.com/fastai/fastai/commit/1c63e868d3d11e73d9f51f58cbd271e67a0fe983
+# and now reset the branch's HEAD to it
+git checkout release-1.0.36
+git reset --hard 1c63e868d3
+git push --force origin release-1.0.36
+
+```
+
+Here is a snippet from PyTorch cheatsheet:
+
+```
+# create a tensor
+# torch.tensor - ***always copies data!***
+# torch.tensor(x) is equivalent to x.clone().detach() if x is a tensor
+torch.tensor(4)                     # scalar 4,        0 dims, size []
+torch.tensor([4., 5.])              # vector [4., 5.], 1 dims, size [2]
+torch.tensor(4, requires_grad=True) # w/ gradient tracking (default False)
+torch.tensor(4, dtype=torch.int16)  # cast to data type
+torch.tensor(4, device="cuda:0")    # put on a desired device
+
+[...]
+
+# create a 1D tensor of size ⌈end−start/step⌉ with values from the interval
+# [start, end) taken with common difference step beginning from start.
+# defaults: start=0, step=1
+torch.arange(5)           # tensor([ 0.,  1.,  2.,  3.,  4.])
+torch.arange(1, 4)        # tensor([ 1.,  2.,  3.])
+torch.arange(1, 2.5, 0.5) # tensor([ 1.0000,  1.5000,  2.0000])
+
+
+[...]
+# method     # tensor             converts to: but not in place - need to assign to a new variable
+#
+t.half()     # torch.HalfTensor   torch.float16
+t.float()    # torch.FloatTensor  torch.float32
+t.double()   # torch.DoubleTensor torch.float64
+#
+t.int8()     # torch.CharTensor   torch.int8    8-bit integer (signed)
+t.uint8()    # torch.ByteTensor   torch.uint8   8-bit integer (unsigned)
+t.byte()     # torch.ByteTensor   torch.uint8   8-bit integer (unsigned)
+t.short()    # torch.ShortTensor  torch.int16
+t.int()      # torch.IntTensor    torch.int32
+t.long()     # torch.LongTensor   torch.int64
+```
+
+Note how this is very dense and very easy to grasp quickly.
+
+
+As I often load and troubleshoot HF models, datasets, tokenizers I have:
+```
+# cache transformer model + tokenizer
+python -c 'import sys; from transformers import AutoModel; AutoModel.from_pretrained(sys.argv[1])' t5-small
+python -c 'import sys; from transformers import AutoTokenizer; AutoTokenizer.from_pretrained(sys.argv[1])' t5-small
+python -c 'import sys; from transformers import AutoConfig; AutoConfig.from_pretrained(sys.argv[1])' t5-small
+
+# cache dataset and metrics
+python -c 'import sys; from datasets import load_dataset; ds=load_dataset(sys.argv[1])' stas/openwebtext-10k
+```
+Please note that not only it's a one-liner I can instantly copy into the shell, I make it so the ever changing name of the model or dataset is an argument, so it's trivial to replace.
+
+I use these for testing and this method is also handy to pre-download and cache these resource.
+
+Then I have complicated recipes like:
+
+```
+### re-shard an existing model to 2GB shards
+
+# use the PR version of transformers till it's merged
+git clone https://github.com/huggingface/transformers -b add-model-idefics
+cd transformers
+
+# reshard this model - replace only this to do another model
+git clone https://huggingface.co/HuggingFaceM4/idefics-9b
+cd idefics-9b
+mkdir -p 2GB
+
+# reshard the normal files
+PYTHONPATH=../src python -c 'import sys, transformers; transformers.IdeficsForVisionText2Text.from_pretrained(sys.argv[1]).save_pretrained("2GB", max_shard_size="2GB")' .
+
+# update or create anew safetensors
+cd 2GB
+python -c "import re, sys, torch; from safetensors.torch import save_file; [save_file(torch.load(f), re.sub(r'.*?(model.*?)\.bin',r'\1.safetensors',f), metadata={'format': 'pt'}) for f in sys.argv[1:]]" *bin
+cp pytorch_model.bin.index.json model.safetensors.index.json
+perl -pi -e 's|pytorch_||; s|\.bin|.safetensors|' model.safetensors.index.json
+cd -
+
+# update the repo files
+git rm pytorch_model-*.bin
+git rm model*safetensors
+mv 2GB/* .
+git add *bin *safetensors
+
+# check and push
+git commit -am "re-shard to 2GB"
+git push
+```
+
+Note that everything is one-liners so I can quickly tweak anything I want and I don't need to edit any files and then figure out where they are, scp them to a remote node, then clean up - it's just a copy-n-paste away and nothing to clean up.
+
+I often freely switch between Bash, Python And Perl one-liners depending on what does the job the best for me. YMMV, but the point is that do whatever makes you most productive. For example, I lived and breathed Perl for more than 25 years and it's the best language for text processing, IMHO, so, of course, I continue using it whenever it suits my needs. If I have to write something that others need to understand easily I can then rewrite it in a long program in another language. But usually debugging is here and now, so if I have to write a program to debug a program and debug it too, I will never get to the finish line.
+
+recommendation: Do not use other people's cheatsheets other than as a fodder. Make your own and format it so that you can quickly find what you need and once found you can instantly get it.
 
 
 ## Automate diagnostics, minimize or avoid typing
@@ -149,6 +372,9 @@ Sometimes it's even possible to completely automate the reporting w/o requiring 
 
 
 XXX: link to useful gdb aliases - `compiled.md`?
+
+
+
 
 ## watch -n and multiple visible terminals
 
@@ -285,19 +511,23 @@ The discussed next approach should work for any revision control system that sup
 
 `git bisect` helps to quickly find the commit that caused a certain problem.
 
-Use case: Say, you were using `transformers==4.33.0` and then you needed a more recent feature so you upgraded to the bleed-edge `transformers@main` and your code broke. there could have been hundreds of commits between the two versions and it'd be very difficult to find the right commit that lead to the breakage by going through all the commits. Here is how you can quickly find out which commit was the cause.
+Use case: Say, you were using `transformers==4.33.0` and then you needed a more recent feature so you upgraded to the bleed-edge `transformers@main` and your code broke. There could have been hundreds of commits between the two versions and it'd be very difficult to find the right commit that lead to the breakage by going through all the commits. Here is how you can quickly find out which commit was the cause.
 
-Solution: Bisecting all the commits between the known good and bad commits.
+footnote: HuggingFace Transformers is actually pretty good at not breaking often, but given its complexity and enormous size it happens nevertheless and the problems are fixed very quickly once reported. Since it's a very popular Machine Learning library it makes for a good debugging use case.
 
-We are going to use 2 terminals A and B. Terminal A will be used for `git bisect` and terminal B for testing your software. There is no technical reason why you couldn't get away with a single terminal but it's easier with 2.
+Solution: Bisecting all the commits between the known good and bad commits to find the one commit that's to blame.
 
-1. In terminal A fetch the git repo and install it in devel mode (`pip install -e .`) into your python environment.
+We are going to use 2 shell terminals: A and B. Terminal A will be used for `git bisect` and terminal B for testing your software. There is no technical reason why you couldn't get away with a single terminal but it's easier with 2.
+
+1. In terminal A fetch the git repo and install it in devel mode (`pip install -e .`) into your Python environment.
 ```
 git clone https://github.com/huggingface/transformers
 cd transformers
 pip install -e .
 ```
-Now the code of this clone will be used automatically when you run your application, instead of the version you previously installed from pypi or conda or elsewhere.
+Now the code of this clone will be used automatically when you run your application, instead of the version you previously installed from PyPi or Conda or elsewhere.
+
+Also for simplicity we assume that all the dependencies have already been installed.
 
 2. next we launch the bisecting - In terminal A, run:
 
@@ -305,16 +535,18 @@ Now the code of this clone will be used automatically when you run your applicat
 git bisect start
 ```
 
-3. Establish the last good and the first bad commits
+3. Discover the last known good and the first known bad commits
 
-`git bisect` needs just 2 data points to do its work. It needs to know one commit that is known to work (`good`) and one that is know to break (`bad`). So if you look at the sequence of commits on a given branch it'd have 2 know points and many commits around these that are of an unknown quality:
+`git bisect` needs just 2 data points to do its work. It needs to know one earlier commit that is known to work (`good`) and one later commit that is know to break (`bad`). So if you look at the sequence of commits on a given branch it'd have 2 known points and many commits around these that are of an unknown quality:
 
 ```
-...... good ..... .... .... .... ..... bad ....
+...... orig_good ..... .... .... .... ..... orig_bad ....
 ------------->---------------->----------------> time
 ```
 
-So for example if you know that `transformers==4.33.0` was good and `transformers@main` (`HEAD`) is bad, find which commit is corresponding to the tag `4.33.0` by visiting [the releases page](https://github.com/huggingface/transformers/releases) and searching for `4.33.0` we find that it was commit `[5a4f340d](https://github.com/huggingface/transformers/commit/5a4f340df74b42b594aedf60199eea95cdb9bed0)`. (typically 8 first places is enough to have a unique identifier)
+So for example if you know that `transformers==4.33.0` was good and `transformers@main` (`HEAD`) is bad, find which commit is corresponding to the tag `4.33.0` by visiting [the releases page](https://github.com/huggingface/transformers/releases) and searching for `4.33.0`. We find that it was commit with SHA `[5a4f340d](https://github.com/huggingface/transformers/commit/5a4f340df74b42b594aedf60199eea95cdb9bed0)`.
+
+footnote: typically the first 8 hex characters are enough to have a unique identifier for a given repo, but you can use the full 40 character string.
 
 
 So now we specify which is the first known good commit:
@@ -322,63 +554,115 @@ So now we specify which is the first known good commit:
 git bisect good 5a4f340d
 ```
 
-and as we said we will use `HEAD` (latest commit) as the bad one, so it's easy:
+and as we said we will use `HEAD` (latest commit) as the bad one, in which case we can use `HEAD` instead finding out the corresponding SHA string:
 ```
 git bisect bad HEAD
 ```
 
-If you know it broke in `4.34.0` you can find its latest commit and use that instead of `HEAD`.
+If however you know it broke in `4.34.0` you can find its latest commit as explained above and use that instead of `HEAD`.
 
 We are now all set at finding out the commit that broke things for you.
 
+And after you told `git bisect` the good and the bad commits it has already switched to a commit somewhere in the middle:
+
+```
+...... orig_good ..... .... current .... .... ..... orig_bad ........
+------------->--------------->---------------->----------------> time
+```
+
+You can run `git log` to see which commit it has switched to.
+
+And to remind, we installed this repo as `pip install -e .` so the Python environment is instantly updated to the current commit's code version.
+
 4. Good or bad
 
-Now in terminal B run your program.
+The next stage is telling `git bisect` if the current commit is `good` or `bad`:
 
-If it fails, in terminal A run:
+To do so in terminal B run your program once.
+
+Then in terminal A run:
 ```
 git bisect bad
 ```
-if it succeeds:
+If it fails, or:
 ```
 git bisect good
 ```
+if it succeeds.
 
-and keep repeating this step until the problem is found.
 
-Once you finished bisecting, `git bisect` will tell you which commit was responsible for breaking things. You can then go to `https://github.com/huggingface/transformers/commit/` and append the commit SHA to that url which will take you to the commit, and which will then link to the PR from which it originated. And then you can ask for help by following up in that PR.
+If, for example, if the result was bad, `git bisect` will internally flag the last commit as new bad and will half the commits again, switching to a new current commit:
+```
+...... orig_good ..... current .... new_bad .... ..... orig_bad ....
+------------->--------------->---------------->----------------> time
+```
 
-If your program doesn't take too long to run even if there are thousands of commits to search, you are dealing with `2**n` bisecting so 1024 commits can be searched in 10 steps.
+And, vice versa, if the result was good, then you will have:
+```
+...... orig_good ..... .... new_good .... current ..... orig_bad ....
+------------->--------------->---------------->----------------> time
+```
 
-If it's very slow, try to reduce it to something small - ideally a small reproduction program that shows the problem really fast. Often commenting out huge chunks of code that you deem irrelevant can be all it takes.
+5. Repeat until no more commits left
+
+Keep repeating step 4 step until the problematic commit is found.
+
+Once you finished bisecting, `git bisect` will tell you which commit was responsible for breaking things.
+
+```
+...... orig_good ..... .... last_good first_bad .... .. orig_bad ....
+------------->--------------->---------------->----------------> time
+```
+If you followed the little commit diagrams, it'd correspond for the`first_bad` commit.
+
+You can then go to `https://github.com/huggingface/transformers/commit/` and append the commit SHA to that url which will take you to the commit, (e.g. `https://github.com/huggingface/transformers/commit/57f44dc4288a3521bd700405ad41e90a4687abc0` and which will then link to the PR from which it originated. And then you can ask for help by following up in that PR.
+
+If your program doesn't take too long to run even if there are thousands of commits to search, you are facing `n` bisecting steps from `2**n` so 1024 commits can be searched in 10 steps.
+
+If your program is very slow, try to reduce it to something small - ideally a small reproduction program that shows the problem really fast. Often, commenting out huge chunks of code that you deem irrelevant to the problem at hand, can be all it takes.
 
 If you want to see the progress, you can ask it to show the current range of remaining commits to check with:
 ```
 git bisect visualize --oneline
 ```
 
-5. Clean up
+6. Clean up
 
 So now restore the git repo clone to the same state you started from (most likely `HEAD) with:
 ```
 git bisect reset
 ```
 
-Possible problems and their solutions:
+and possible reinstall the good version of the library while you report the issue to the maintainers.
+
+Sometimes, the issue emerges from intentional backward compatibility breaking API changes, and you might just need to read the project's documentation to see what has changed. For example, if you switched from `transformers==2.0.0` to `transformers==3.0.0` it's almost guaranteed that your code will break, as major numbers difference are typically used to introduce major API changes.
+
+
+7. Possible problems and their solutions:
 
 a. skipping
 
-If for some reason the current sha cannot be tested - it can be skipped and it will continue bisecting with the rest
+If for some reason the current commit cannot be tested - it can be skipped with:
 ```
 git bisect skip
 ```
-This is often helpful if some API has changed in the middle of the range and your program starts to fail for a totally different reason.
+and it `git bisect` will continue bisecting the remaining commits.
+
+This is often helpful if some API has changed in the middle of the commit range and your program starts to fail for a totally different reason.
 
 You might also try to make a variation of the program that adapts to the new API, and use it instead, but it's not always easy to do.
 
-b. reversed order
+b. reversing the order
 
-Normally git expects `bad` to be after `good`. Now, if `bad` happens before `good` revision order-wise and you want to find the first revision that fixed a previously existing problem - you can reverse definition of `good` and `bad` - it'd be confusing to work with overloaded logic states, so it's recommended to use a new set of states instead `fixed` and `broken` - here is how you do that.
+Normally git expects `bad` to be after `good`.
+
+
+```
+...... orig_good ..... .... .... .... ..... orig_bad ....
+------------->--------------->---------------->----------------> time
+```
+
+Now, if `bad` happens before `good` revision order-wise and you want to find the first revision that fixed a previously existing problem - you can reverse the definitions of `good` and `bad` - it'd be confusing to work with overloaded logic states, so it's recommended to use a new set of states instead - for example, `fixed` and `broken` - here is how you do that.
 
 ```
 git bisect start --term-new=fixed --term-old=broken
@@ -396,9 +680,78 @@ git good / git bad
 
 c. complications
 
-There are sometime other complications, like when different revisions' dependencies aren't the same and for example one revision may require `numpy=1.25` and the other `numpy=1.26`. If the dependency package versions are backward compatible installing the later version should do the trick. But that's not always the case. So sometimes one has to reinstall the right dependencies before retesting the program.
+There are sometimes other complications, like when different revisions' dependencies aren't the same and for example one revision may require `numpy=1.25` and the other `numpy=1.26`. If the dependency package versions are backward compatible installing the newer version should do the trick. But that's not always the case. So sometimes one has to reinstall the right dependencies before re-testing the program.
 
 Sometimes, it helps when there is a range of commits that are actually broken in a different way, you can either find a range of `good...bad` commits that isn't including the other bad range, or you can try to `git bisect skip` the other bad commits as explained earlier.
+
+
+## Juggling multiple sets of configs for different debug experiments
+
+There are times when one tweaks a single line in a single file to see a problem, but at times it can be many lines in many files. And it becomes very difficult to keep track of what's what and not make mistakes.
+
+Here what helps is to either have a dedicated versioned config file per experiment, or full versioned directories with sets of files that vary.
+
+So for example, say you need to tweak a directory with 2 files:
+
+```
+$ ls -1 experiment/
+config.yaml
+test.py
+```
+and you invoke the program as:
+```
+python experiment/test.py --config experiment/config.yaml
+```
+
+So let's rename the first set to `experiment1`:
+```
+mv experiment experiment1
+```
+
+So you can create now say 2 additional sets of files:
+
+```
+cp -r experiment experiment2
+cp -r experiment experiment3
+```
+now tweak the files in each of these sets as you wish and when you are about to run the actual debug experiment you can simply symlink to the desired set atomically at execution time:
+
+```
+ln -s experiment1 experiment; python experiment/test.py --config experiment/config.yaml
+```
+and later if you want to do set 2:
+```
+ln -s experiment2 experiment; python experiment/test.py --config experiment/config.yaml
+```
+and same for 3:
+```
+ln -s experiment3 experiment; python experiment/test.py --config experiment/config.yaml
+```
+
+The critical nuance here is that we are changing a single source of truth as compared to changing the folder name in multiple places:
+
+```
+python experiment1/test.py --config experiment1/config.yaml
+```
+
+One can also use the `git commit` approach where each variation is committed and then one can quickly lookup the desired version with `git log` and then `git checkout SHA` for the wanted version.
+
+At other times using an environment variable can accomplish a similar things, so here you'd do:
+
+```
+SOME_FLAG=exp1 python myprogram.py
+SOME_FLAG=exp2 python myprogram.py
+```
+if you wrote the program to choose a different code path depending on the value of `SOME_FLAG`. And I'm stressing again that we want:
+```
+SOME_FLAG=exp1 python myprogram.py
+```
+and not:
+```
+export SOME_FLAG=exp1
+python myprogram.py
+```
+because the latter is not atomic and can be forgotten and additionally with environment variables this is even more potentially problematic since it'd be easy to forget you set this environment variable a few hours later and be confused why you're getting unexpected results. Avoid actions at a distance as much as possible.
 
 
 
@@ -451,3 +804,95 @@ For a quick
 IDE Debuggers
 
 Tools like [PyCharm](https://www.jetbrains.com/pycharm/) have incre
+
+
+
+## Handy shell shortcuts
+
+The following bash shortcuts will save you a lot of debug time.
+
+You need to navigate the prompt line with the command on it quickly. You can use arrows but it can be too slow if your command line is long. Instead learn these handy shortcuts:
+
+- `Ctrl+a`: moves the cursor to the beginning of the line.
+- `Ctrl+e`: moves the cursor to the end of the line.
+- `Alt+f`:  moves one word forward.
+- `Alt+b`:  moves one word backward.
+
+Similarly to how arrows are slow to move the curser, `Del` and `Backspace` are slow to delete characters. You can instead:
+
+- `Ctrl+u`: erases everything from the current cursor position to the beginning of the line.
+- `Ctrl+k`: erases everything from the current cursor position to the end of the line.
+
+
+
+
+## Use bash history
+
+Do not re-type commands you have already executed - this is a huge time wasting and you're likely to make mistakes.
+
+Instead, rely on either an experiment cheatsheet file where you write all the commands and you copy-n-paste from, or use the bash history (or whatever shell's history that you use). I do both since some of the history gets lost when other shells write to it as well.
+
+Most shells let you cycle through past commands with arrow up and down, and this is the fastest way to repeat recent commands, but once you need to go back 10 commands it becomes tedious. So use bash history search feature to find things faster.
+
+It works like this. You type `Ctrl-r` and then start typing the beginning of a string that's part of the command you are looking for, For example, you type: `git`. And then you continue hitting `Ctrl-r` to cycle through all commands in the history starting with `git`.
+
+If you already started typing the command and decided to search then, you'd then hit `Ctrl-a` to move to the beginning of the string you're searching for and then `Ctrl-r` to start search, then `Ctrl-y` to paste the substring and then again `Ctrl-r` to cycle through matches. This is not very easy to remember.
+
+Here is the full sequence again:
+```
+CTRL-a # This moves our cursor to the beginning of the line.
+CTRL-r # copy the current command line
+CTRL-y # paste it
+CTRL-r # search the history (repeat this last command)
+```
+
+Here is a even easier approach to history search. Add this:
+
+```
+$ cat ~/.inputrc
+"\e[A": history-search-backward
+"\e[B": history-search-forward
+```
+and restart `bash`.
+
+This setup allows me to type the beginning of the command, say `git` and then hit Arrow-Up key and search through previously executed commands starting with this string - Arrow-Down key will search backwards. This is a way simpler and more intuitive.
+
+footnote: I think this feature comes from `tcsh` where it's using `Esc-p` and `Esc-n` - but really you can bind these actions to any keys you want to e.g. `"\ep"` and `"\en"` for `Esc-p` and `Esc-n` accordingly.
+
+Here are some other useful settings related to managing bash history related to its size, duplicate management and whether it gets rewritten on every new shell.
+
+```
+$ cat ~/.bashrc
+[...]
+# don't put duplicate lines in the history. See bash(1) for more options
+# ... or force ignoredups and ignorespace
+HISTCONTROL=ignoredups:ignorespace
+
+# append to the history file, don't overwrite it on starting a new shell
+shopt -s histappend
+
+# for setting history length see HISTSIZE and HISTFILESIZE in bash(1)
+HISTSIZE=1000
+HISTFILESIZE=2000
+[...]
+```
+
+The other useful setting for `~/.inputrc` is:
+
+
+```
+$ cat ~/.inputrc
+[...]
+# allow new line copy with the command
+set enable-bracketed-paste Off
+```
+
+So if you're managing your experiment commands in a file this will allow you to copy multiple commands at once, by keeping the new lines and not require adding `;` at the end of each command.
+
+
+
+
+
+## Create useful time saving aliases
+
+Whenever you find
