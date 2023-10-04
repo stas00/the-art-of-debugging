@@ -216,16 +216,16 @@ In the above example, I use `df` with human formatted sizes and I don't want to 
 
 # Cheatsheets
 
-While aliases are super handy, too many aliases can be difficult to remember so it's also very useful to have topical cheatsheets. I have a cheatsheet for git, python, gdb, transformers, conda, pip, bash, etc. In those cheatsheets I write very dense one line comments of what the following line does and I constantly improve them. This helps me to map things out and know where I can quickly find a specific solution.
+While aliases are super handy, too many aliases can be difficult to remember, therefore it's also very useful to have various cheatsheets each specific to a sub-field of your occupation. I have a cheatsheet for git, python, gdb, transformers, conda, pip, bash, etc. In those cheatsheets I write very dense one-line comments of what the following line does, a compact output if relevant, and I constantly improve and re-organize them. This helps me to map things out in my head and know where I can quickly find a specific solution. StackOverflow is awesome, but having my own StasOverflow is priceless.
 
-For example here is a snipped of my git cheatsheet:
+For example, here is a snipped of my git cheatsheet:
 
 ```
 # ranges illustration
 A ─┬─ E ── F ── G   master
    └─ B ── C ── D   fix
-git log master..fix 	BCD
-git log master...fix 	BCD and EFG
+git log master..fix   BCD
+git log master...fix  BCD and EFG
 
 git log master 	      reachable parents from master
 git log ^master 	  exclude reachable parents from master
@@ -235,6 +235,7 @@ git log HEAD^@ 	      parents of HEAD
 git log HEAD^! 	      HEAD, then excluding parents’s ancestors
 git log HEAD^{:/fix}  search previous HEADs matching criteria
 
+[...]
 
 # reset branch's HEAD to a given commit hash:
 # find the last commit that was supposed to be the HEAD, e.g.:
@@ -243,10 +244,14 @@ git log HEAD^{:/fix}  search previous HEADs matching criteria
 git checkout release-1.0.36
 git reset --hard 1c63e868d3
 git push --force origin release-1.0.36
-
 ```
 
-Here is a snippet from PyTorch cheatsheet:
+I carefully arrange similar entries so that the entries are vertically aligned for quick grasping.
+
+For the recipes I use real urls, tags, files, so that I know exactly what is meant. Rather than URL, FILENAME, etc., placeholders as some instruction documents use.
+
+
+Here is a snippet from the PyTorch cheatsheet:
 
 ```
 # create a tensor
@@ -283,10 +288,10 @@ t.int()      # torch.IntTensor    torch.int32
 t.long()     # torch.LongTensor   torch.int64
 ```
 
-Note how this is very dense and very easy to grasp quickly.
+Note how this is very dense and very easy to grasp quickly thanks to vertical alignment and I even manage to pack the output on the same line.
 
 
-As I often load and troubleshoot HF models, datasets, tokenizers I have:
+As I often load and troubleshoot HF models, datasets, tokenizers I have the following in my HF cheatsheet:
 ```
 # cache transformer model + tokenizer
 python -c 'import sys; from transformers import AutoModel; AutoModel.from_pretrained(sys.argv[1])' t5-small
@@ -296,11 +301,12 @@ python -c 'import sys; from transformers import AutoConfig; AutoConfig.from_pret
 # cache dataset and metrics
 python -c 'import sys; from datasets import load_dataset; ds=load_dataset(sys.argv[1])' stas/openwebtext-10k
 ```
-Please note that not only it's a one-liner I can instantly copy into the shell, I make it so the ever changing name of the model or dataset is an argument, so it's trivial to replace.
 
-I use these for testing and this method is also handy to pre-download and cache these resource.
+Please note that not only it's a one-liner I can instantly copy into the shell, I make it so that the variable name of the model or dataset is an argument to the one-liner program, so it's trivial to replace. And again this is a complete example that includes an actual argument so it's self-documenting.
 
-Then I have complicated recipes like:
+I use the above for testing that the resources can be downloaded and this method is also handy to pre-download and cache these resource. I use those as well when I build my own models and datasets locally.
+
+Then in the same cheatsheet I have complicated recipes like:
 
 ```
 ### re-shard an existing model to 2GB shards
@@ -339,7 +345,7 @@ Note that everything is one-liners so I can quickly tweak anything I want and I 
 
 I often freely switch between Bash, Python And Perl one-liners depending on what does the job the best for me. YMMV, but the point is that do whatever makes you most productive. For example, I lived and breathed Perl for more than 25 years and it's the best language for text processing, IMHO, so, of course, I continue using it whenever it suits my needs. If I have to write something that others need to understand easily I can then rewrite it in a long program in another language. But usually debugging is here and now, so if I have to write a program to debug a program and debug it too, I will never get to the finish line.
 
-recommendation: Do not use other people's cheatsheets other than as a fodder. Make your own and format it so that you can quickly find what you need and once found you can instantly get it.
+recommendation: Do not use other people's cheatsheets other than as a fodder and inspiration. Make your own and format it so that you can quickly find what you need and once found you can instantly get it.
 
 
 ## Automate diagnostics, minimize or avoid typing
@@ -859,6 +865,22 @@ This setup allows me to type the beginning of the command, say `git` and then hi
 
 footnote: I think this feature comes from `tcsh` where it's using `Esc-p` and `Esc-n` - but really you can bind these actions to any keys you want to e.g. `"\ep"` and `"\en"` for `Esc-p` and `Esc-n` accordingly.
 
+Finally, you can always search the history using other tools. For example, let's search for `git`
+```
+$ history | grep git
+ 1663  git stash
+ 1664  git checkout main
+ 1665  git pull
+```
+and now you can either copy-n-paste the command that you need or you can even run the wanted command by the number in the first column, so we can do:
+```
+$ !1665
+git pull
+Already up to date.
+```
+Here Bash echo'ed the command it is about to start and run it.
+
+
 Here are some other useful settings related to managing bash history related to its size, duplicate management and whether it gets rewritten on every new shell.
 
 ```
@@ -878,7 +900,6 @@ HISTFILESIZE=2000
 ```
 
 The other useful setting for `~/.inputrc` is:
-
 
 ```
 $ cat ~/.inputrc
