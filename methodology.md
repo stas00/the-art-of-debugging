@@ -1,6 +1,9 @@
-# Quick Iterations, Small Payload
+# Methodology
 
-## The most important needs of successful debugging
+
+## Quick Iterations, Small Payload
+
+The most important needs of successful debugging
 
 There are just 2 needs:
 
@@ -61,36 +64,55 @@ tensor([[0.0595, 0.3011],
 But if you want to keep track of numbers and if you need to perform some transformations surely it's easier to do that with a payload like:
 
 ```
-tensor([[0.1, 0.2],
-        [0.3, 0.4]])
+tensor([[1.0, 2.0],
+        [3.0, 4.0]])
 ```
 
 If you ever debugged an assembly code that is operates on hex code (`[0-9A-F]`) often someone would inject hex  sequences like `DEADBEEF` because it really stands out in a hex code like: `A0E92827A99DEADBEEF183E`. So, often, you can be creative and create synthetic data which will really make it easy to see what the problem is. At other times any **small** random data will do.
 
 Even if you have to eventually use real data, still try to use the smallest possible real data.
 
-For example, if you are debugging a machine learning project, that is training a 175B parameter model, but try to use a 1B or even a 125M parameter model, for quality needs. And a 10K parameter model for crashing debugging.
+For example, if you are debugging a Machine Learning project, that needs to train a 175B-parameter model, you can use a 1B- or even a 125M-parameter model, for basic quality testing. And a 10K-parameter model for debugging the functionality and exceptions.
 
+If you are into Machine Learning and want to go into a detailed process please read:
+[Faster debug and development with tiny models, tokenizers and datasets](https://github.com/stas00/ml-engineering/blob/master/transformers/make-tiny-models.md)
 
 
 ## Single process, single cpu, single gpu
 
-Big data, big resources, big overheads
+Large data requires big resources that lead to big overheads.
 
 Large data often doesn't fit onto a single CPU or GPU and requires some parallelization method that would require multiple processes makes debugging very difficult. Most debuggers won't be able to handle such tasks and `print` will be your only friend and savior.
 
+On the other hand if your data is small, you can fit onto a single small gpu and at times you don't even need a gpu - a cpu might be able to handle the load fast enough.
+
+Of course, this saves costs as well. And reduces carbon footprint.
 
 
-## race conditions
+## Avoiding race conditions
 
-gdb, pdb, whatever other debugger you use, often changes the timing of the process and a deadlock or a race condition can't be reproduced.
+There are times when a debugger can't help resolve a problem. For example, if you're dealing with a race condition or sometimes a deadlock, an introduction of a debugger changes the timing and the problem disappears.
 
-print and strace
+In this case typically you have to resort to solutions like `print` and sometimes `strace` can help.
+
+If it's a hanging you can, of course, still attach to the process with gdb if you're doing libc level debugging, or the higher level tracer like `py-spy` in python.
 
 
-## async vs sync
+## Async vs sync mode
 
-often turning async behavior off reveals the problem very easily.
+When an exception is thrown during an async operation the program is likely to fail to tell you where the problem originated from, which makes it for a very difficult cause hunting process.
+
+For example, PyTorch uses CUDA which has a lot of its operations executed in async mode. And when things fail you typically get a cryptic error which tells you absolutely nothing about where it came from.
+
+Luckily there is a little known environment variable `CUDA_LAUNCH_BLOCKING`, which when set turns the async nature off and suddenly on the same trigger you get a nice Python traceback which tells you exactly what the problem is and then it's trivial to fix. To activate it just do:
+
+```
+CUDA_LAUNCH_BLOCKING=1 python myprogram.py
+```
+
+One side effect of activating such flags is that it changes the timing of the execution and if the async kernel had a deadlock issue, it might disappear and you won't be able to debug the deadlock issue.
+
+use case: when we were preparing for BLOOM-176B training we were getting a deadlock once we used more than a certain amount of gpus and no amount of lost hair helped finding the cause. And very early on, we discovered that when we used `CUDA_LAUNCH_BLOCKING=1` the hanging would disappear. Since we didn't have the luxury of spending a month on figuring it out - we measured the performance and discovered that there was no perceivable slowdown when async-execution was turned off, even though the manpage warns to only ever use `CUDA_LAUNCH_BLOCKING=1` for debug purposes. Of course, you might not be always that lucky, but don't be afraid to go against the recommendations if it unblocks your progress.
 
 
 ## Atomic debug cycles
@@ -103,19 +125,21 @@ rm -r data
 ```
 and the `data` folder impacts how `launch.sh` behaves, you're very likely to forget to reset `data` at some point and run `launch.sh` thinking that you did and get erroneous outcomes which could derail the whole debug process completely since you might accidentally discard the only salvation idea that mistakenly didn't get tested, but you thought you did and the outcome erroneously showed that it wasn't it.
 
-So the foolproof methodology is to change the above 2 command into a single compound one liner:
+So the foolproof methodology is to change the above 2 commands into a single compound one-liner:
 ```
 rm -r data; ./launch.sh
 ```
 Now you just need to hit `arrow up` in most Unix shells like Bash to repeat this command again and again.
 
-Certainly, if you have multiple commands to deal with the one liner approach might not work well, then put that commands sequence into a shell script and repetitively launch that script instead. Then you can even have a variety of different debug scripts with the variations that you need.
+Certainly, if you have multiple commands to deal with the one-liner approach might not work well, then put that commands sequence into a shell script and repetitively launch that script instead. Then you can even have a variety of different debug scripts with the variations that you need.
 
 This idea in a way can be called an atomic operation, where the concept ensures that several sequential actions always happen in the exact same order and they happens a single operation.
 
-This is also why notebook technologies like [Jupyter Notebook](./https://jupyter.org/) and alike, which allow you to go back and forth between different lines of the code and re-execute them selectively, are super-useful at quick prototyping, but are terrible to use for debug purposes because the execution order can't be enforced easily and it is tempting to re-run only parts of the notebook and not wait for a potentially slow full re-run.
+This is also why notebook technologies like [Jupyter Notebook](./https://jupyter.org/), [IPython](https://en.wikipedia.org/wiki/IPython) and alike, which allow you to go back and forth between different lines of code and re-execute them selectively, are super-useful at quick prototyping, but can be terrible to use for debug purposes because the execution order can't be enforced easily and it is tempting to re-run only parts of the notebook and not wait for a potentially slow full re-run.
 
 A need for a file auto-save falls into this category as well. Since edit-try, edit-try, edit-try cycle is always repeated in the debug process, if the edited change isn't always saved before it's tried, the exact same problem of testing the wrong hypotheses occurs and the discovery of a working solution could be missed completely.
+
+footnote: as much as I like `nano` for quick remote editing on the node, I have to remember to `Ctrl-o` to manually save the change before trying it out.
 
 Going back to the proposition of using `;` to concatenate multiple commands - this approach will always execute each command regardless of whether it succeeded or not. In some situations where any of the commands might fail you might want to use `&&` instead of `;` to do the concatenation so instead of doing:
 
@@ -129,9 +153,10 @@ rm -r data && echo start && ./launch.sh
 ```
 now the next command in the sequence will only be executed if the previous one was successful.
 
+
 ## Alias frequently used commands
 
-If you repeat the same commands often - use aliases. Especially in situations when commands use multiple difficult to remember flags.
+If you repeat the same commands often - consider using aliases. Especially in situations when commands use multiple difficult to remember flags.
 
 suggestion: always add a few aliases at a time and start using them before adding new aliases. Like learning a new new languages if you don't use it you lose it.
 
@@ -374,7 +399,7 @@ Now you can just print `pd` in the prompt to get the above command executed - pr
 
 In general, the less you need to type, the more likely you will succeed to resolve the issue.
 
-Sometimes it's even possible to completely automate the reporting w/o requiring any typing at all. When I try to debug memory leaks I use tools that report memory usage or deltas automatically. e.g. I developed [ipyexperiments](https://github.com/stas00/ipyexperiments) that auto-reports CPU and GPU memory usage and increments in Jupyter notebook environment. As mentioned earlier one has to be very careful using such environments for debugging so I have to always remember to re-run the whole notebook and not be tempted to re-run only parts of it. But the benefit here is that I can group the code into sections and get auto-reports at how each section of code consumed CPU and/or GPU memory. This is also a fantastic tool for diagnosing memory leaks, as I can re-run the same cell multiple times and see whether the memory usage grows or not.
+Sometimes it's even possible to completely automate the reporting w/o requiring any typing at all. When I try to debug memory leaks I use tools that report memory usage or deltas automatically. e.g. I developed [ipyexperiments](https://github.com/stas00/ipyexperiments) that auto-reports CPU and GPU memory usage and increments in Jupyter notebook environment. As mentioned earlier one has to be very careful using such environments for debugging so I have to always remember to re-run the whole notebook and not be tempted to re-run only parts of it. But the benefit here is that I can group the code into sections and get auto-reports at how each section of code consumed CPU and/or GPU memory. This is also a fantastic tool for diagnosing memory leaks, as I can re-run the same cell multiple times emulating a loop and see whether the memory usage grows or not.
 
 
 XXX: link to useful gdb aliases - `compiled.md`?
@@ -384,16 +409,64 @@ XXX: link to useful gdb aliases - `compiled.md`?
 
 ## watch -n and multiple visible terminals
 
-watch nvidia-smi output like top(1)
+Everybody loves tools that report resources states in real time, e.g. `top`.
+
+There is a way to turn any state reporting tools into live updating ones. `watch -n` does the trick.
+
+For example, let's say we want to watch the output of `nvidia-smi` updating once a second. This is just:
 
 ```
 watch -n 1 nvidia-smi
 ```
-I, of course, have it as an alias:
+Change `1` to `0.5` or `2` to whatever number of seconds you want the refresh to happen at.
+
+I, of course, have it as an alias since I use it all the time:
 ```
 alias wn='watch -n 1 nvidia-smi'
 alias wnm='nvidia-smi --query-gpu=timestamp,utilization.memory,memory.used --format=csv -l 1'
 ```
+
+The second need here is to have more than one terminal - so that you have one terminal where you run the program and another where you run a monitoring program. GUI tools of course work as well, but the key here is that they shouldn't overlap, so that you can see both at the same time.
+
+If you work on a tiny 14" laptop or even 17" one consider getting yourself a large wide monitor or two smaller ones - it'll change your debugging productivity dramatically.
+
+Let's look at some more practical `watch -n` examples.
+
+Do you have a problem with a program eating up a disc space on some partition and you want to correlate the execution with that partition? Say, it's a partition named `/tmp`
+```
+watch -n 'df -h | grep /tmp'
+```
+
+One critical methodology to notice here is that I carefully filter only the data I need to watch. While I can have the whole often huge output of `df` refreshing once a second, it'd make noticing the single entry very difficult. By filtering out all the noise I get the signal that I need much easier.
+
+Now, say, you want to watch how your system handles programs that allocate too much memory and has `cgroups` killing it. You could run this little one-liner in a console which would allocate 1GB of cpu memory on each step and print how many were GBs allocated:
+```
+perl -le '$|=1; $gbs=10; $b="A"; $gb = $b x 2**30; $y .= $gb and print $_  for 2..$gbs; sleep 20'
+```
+meanwhile to watch RSS grow by 1GB in another console run:
+```
+watch -n 0.5 $'(ps auxc | head -1; ps auxc | grep perl | perl -plae \'$F[5]=sprintf q[%0.3fGB],$F[5]/2**20; $_=qq[@F]\') | column -t'
+```
+
+Replace `grep perl` with `grep python` and now you can nicely watch only Python processes in `top`-like style,
+
+footnote: you can tell `top` to do the same (stat `top`, then hit `o`, then type `COMMAND=python`) but you can't automate it. Sometimes you can cheat with `top -p $(pgrep -d "," python)` but the target process has to be running already, I'd rather keep the diagnostics running non-stop.
+
+Aliasing this requires a bunch of backslashes:
+```
+alias watch-python=$'watch -n 0.5 \'(ps auxc | head -1; ps auxc | grep python | perl -plae "\$F[5]=sprintf q[%0.3fGB],\$F[5]/2**20; \$_=qq[@F]") | column -t\''
+```
+
+Specifically for `top` limitations to filtering, `htop` is more flexible filtering-wise. For example: filter by python, sort by RSS, only show my procs
+```
+htop -F python -s M_RESIDENT -u `whoami`
+```
+To get the full list of cols to sort by `htop --sort-key help`
+
+If there is an alternative tool that already does what you need by all means use it, this was really a demonstration of how `watch -n` can be super-useful.
+
+But `ps` can give me much more narrowing power, since you can filter by more things. For example, `ps -ef` will give you the long command line for each process with all the arguments it was launched with - so if you have multiple Python programs and you want to filter only specific Python processes you can easily do it now based on the long command line output.
+
 
 
 
