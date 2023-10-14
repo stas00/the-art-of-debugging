@@ -1,6 +1,12 @@
 # The Art of Debugging
 
-This is a work-in-progress collection of methodologies and copy-n-paste recipes for successful debugging of software projects.
+This guide will teach you how to:
+1. Debug normal issues really fast
+2. Make complicated issues possible to debug
+
+This is a work-in-progress collection of methodologies and copy-n-paste recipes for successful debugging of simple and complicated software problems.
+
+footnote: adapted from Perl's slogan: "Easy things should be easy and hard things should be possible".
 
 ## Intro
 
