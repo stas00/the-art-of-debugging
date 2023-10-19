@@ -417,9 +417,9 @@ XXX: link to useful gdb aliases - `compiled.md`?
 
 ## watch -n and multiple visible terminals
 
-Everybody loves tools that report resources states in real time, e.g. `top`.
+Everybody loves tools that report resource states in real time, e.g. `top` to watch CPU memory usage, core utilization and other essential system stats.
 
-There is a way to turn any state reporting tools into live updating ones. `watch -n` does the trick.
+There is a way to turn any state reporting tool into a live updating one. `watch -n` does the trick.
 
 For example, let's say we want to watch the output of `nvidia-smi` updating once a second. This is just:
 
@@ -478,9 +478,9 @@ But `ps` can give me much more narrowing power, since you can filter by more thi
 
 
 
-## sleep
+## Uses for sleep
 
-Injecting `sleep` calls in the code being debugged can be very helpful during debug when you need to watch resource usages.
+Sometimes when you try to debug excessive resource usage, the code runs too fast to be able to see the level of consumption in an external monitor. In this situation injecting `sleep` calls in the code being debugged, usually right after the code which is a suspect to overuse a resource in question, can be very helpful during debug when you need to watch resource usages.
 
 ## Narrow down what you monitor
 
@@ -541,55 +541,136 @@ python -c 'import sys; from transformers import AutoConfig; AutoConfig.from_pret
 
 
 
-### emulate an almost full partition
+### Emulate an almost full partition
 
+If you're dealing with running out of disc space during some process. For example, say, you have a process like `tar` crashes because `/tmp` runs out of disc space while it runs, but this happens after 10min of running, which is too slow. You can then precipitate the event by filling up the partition to almost full and then the even will arrive much faster. One of the ways of doing that is to quickly create a large file of the size you desire. For example, if you have 29GB free and you want to leave only 1GB free, then create a 28GB file with:
+```
 cd /tmp
+dd if=/dev/zero of=/tmp/tmp.bin bs=1G count=28
+```
 
-dd if=/dev/zero of=1g.bin bs=1G count=28
+Here we tell `dd` to create a file `/tmp/tmp.bin` which is comprised of 28 1GB chunks.
 
+But this approach isn't great since it could impact your system's functioning. Instead you can just create a temporary RAM-based filesystem of 1GB and then tell the application to use it instead of `/tmp`.
 
+Step 1. create a 1GB `tmpfs` and mount it at `~/ramdisk`:
+```
+mkdir ~/ramdisk
+sudo mount -t tmpfs -o size=1G,user,mode=1777 tmpfs ~/ramdisk
+```
+Step 2. run the application, .e.g., `myprogram`:
+```
+TMPDIR=~/ramdisk myprogram
+```
 
+`TMPDIR` is a special environment variable that allows you to override where the application will write to for their tempfs needs, instead of the default `/tmp`.
 
-### Dealing with running out of cpu memory
+The additional advantage is that this filesystem is faster than your normal storage.
 
-CPU memory:
+Just beware that `tmpfs` uses virtual volatile memory. When you unmount this partition or reboot your system all files created in that partition will disappear. You can read about tmpfs [here](https://www.kernel.org/doc/html/latest/filesystems/tmpfs.html).
 
-allocate 1gb on each step and print how many were allocated
-perl -le '$|=1; $gbs=10; $b="A"; $gb = $b x 2**30; $y .= $gb and print $_  for 2..$gbs; sleep 20'
+When finished unmount this partition to free up the used CPU memory:
+```
+sudo umount ~/ramdisk
+```
 
-meanwhile to watch RSS grow by 1gb:
+### Emulating with running out of cpu memory
+
+If the application fails because it runs out of memory, but it occurs after many minutes/hours of waiting and you want to precipitate that event you could reduce your available CPU memory by quickly allocating as many GBs as you need.
+
+For example, here is how you can allocate 10GB and hold it in use - 1GB on each step and print how many GBs were allocated:
+
+```
+perl -le '$|=1; $gbs=10; $b="A"; $gb = $b x 2**30; $y .= $gb and print $_  for 2..$gbs; sleep 1000'
+```
+
+In another shell you can watch how the Resident memory usage grows in real time, 1GB at a time.
+```
 watch -n 0.5 $'(ps auxc | head -1; ps auxc | grep perl | perl -plae \'$F[5]=sprintf q[%0.3fGB],$F[5]/2**20; $_=qq[@F]\') | column -t'
-
-
-### Dealing with running out of gpu memory
-
-I also created some helpful tools for pre-filling GPU memory - XXX: ipyexperiments
-
-
-### Emulating limited resources
-
-
-but sometimes a much better approach is to create a special shell where you limit the resources to a controlled amount
-
-```
-# https://www.freedesktop.org/software/systemd/man/systemd-run.html
-#
-# launch a new shell
-systemd-run --user --scope -p MemoryHigh=100G -p MemoryMax=100G -p MemorySwapMax=50G --setenv="MEMLIMIT=100GB" bash
-#
-# Now any process launched from this shell will get killed if it consumes more than 100GB of RAM and no more than 50GB of SWAP memory
-# it will throttle the process when reaching MemoryHigh and kill it when reaching MemoryMax
-# so these are soft and hard limits correspondingly
-# practically, especially when debugging leaks best to set both to the same value
-
-# can check if it's a shell running systemd-run with `echo $SYSTEMD_EXEC_PID`
-# and the custom set variable is useful to check if we are inside the shell with a given limit
-echo $MEMLIMIT
-100GB
-# additional properties are here: https://www.freedesktop.org/software/systemd/man/systemd.resource-control.html#
 ```
 
+You can control how many GBs to allocate by changing `$gbs=10` to another desired number. And you can adjust the value of `sleep 1000` to however many seconds you want this program to hold this memory in use.
 
+Now you can run your original program with a much reduced available CPU memory.
+
+But sometimes a much better approach is to create a special shell where you limit the desired resources to a controlled amount:
+
+Step 1. launch a new shell:
+```
+systemd-run --user --scope -p MemoryHigh=5G -p MemoryMax=5G -p MemorySwapMax=3G --setenv="MEMLIMIT=5GB" bash
+```
+
+Now any process launched from this shell will get killed if it consumes more than 5GB of RAM and more than 3GB of SWAP memory.
+
+`MemoryHigh` and `MemoryMax` are the soft and hard CPU memory limits correspondingly.
+
+The `MemoryHigh` setting is useful if you want the system to throttle the processes when they allocate more than `MemoryHigh` of CPU memory. So in this example we set it to the same value as `MemoryMax` so it'll have no throttling impact.
+
+I use `--setenv="MEMLIMIT=5GB"` as a helper so that later I can check what limit I had set and it is useful to check if we are inside the shell with a given limit:
+```
+$ echo $MEMLIMIT
+5GB
+```
+
+Step 2. Run a program that consumes more than the limit you set in Step 1
+
+Let's reuse the one liner that allocates 1GB at a time, up to 10GB:
+```
+$ perl -le '$|=1; $gbs=10; $b="A"; $gb = $b x 2**30; $y .= $gb and print $_  for 2..$gbs; sleep 1000'
+2
+3
+4
+5
+Killed
+```
+As you can see this program got killed as soon as it allocated 5GB of Resident CPU memory.
+
+You can read [A Deep Investigation into MMAP Not Leaking Memory](https://stasosphere.com/entrepreneur-being/301-mmap-memory-leak-investigation/) to see how I used this technique to figure out whether MMAP leaks memory or not.
+
+For the detailed manpage see [systemd-run](https://www.freedesktop.org/software/systemd/man/systemd-run.html) and
+for additional properties that can be set [this section](https://www.freedesktop.org/software/systemd/man/systemd.resource-control.html#).
+
+
+
+
+### Emulating running out of GPU memory
+
+Now we have dealt with emulating running out of disk space, CPU memory and now we come to the GPU memory. We will use the same principle as before - we can pre-allocate a large chunk of the GPU memory leaving only enough for the test run to occur. This allows us to get to the problematic event much sooner than if we have a huge GPU with lots of free memory. Especially if the issue is an actual memory leak and not a cached memory and it's happening slowly.
+
+First, install `ipyexperiments`
+```
+pip install ipyexperiments
+```
+
+Now, say, you want to leave 3GB of free memory on your GPU card before you launch your program.
+
+Step 1. Run a magical one-liner to use-up all but 3GB of GPU memory
+
+```
+python -c 'import time, ipyexperiments.utils.mem; \
+do_not_delete = ipyexperiments.utils.mem.gpu_mem_leave_free_mbs(3<<10); \
+time.sleep(1000)'
+```
+
+You can run `nvidia-smi` to validate that only 3GB remain free.
+
+If you need the allocation to last longer/shorter - adjust the sleep time.
+
+footnote: `3<<10 == 3*2**10` - it's just less to type
+
+Step 2. Run your program that you want to test how it performs with just 3GB of free memory.
+
+You can also copy the code from the one-liner into the beginning of your program, but it's easier to keep the separated so that your program remains clean of debug code.
+
+And how was the memory pre-allocated? Using a simple `torch.ones` allocator. For example here is how you can pre-allocate 10GB of GPU memory:
+```
+import torch
+n=10
+x = torch.ones((n*2**18)).cuda().contiguous()
+```
+Just make sure `x` doesn't go out of scope, since when it does the memory will get released.
+
+If you have a recent NVIDIA GPU (A100, H100, and higher) you could also reshape your GPU using Multi-Instance GPU (MIG) as explained [here](https://www.nvidia.com/en-us/technologies/multi-instance-gpu/). So if you're trying to ensure your software works on a specifically sized smaller GPU than the one you develop on, you may consider resizing your GPU to a smaller one for the duration of your tests.
 
 
 ## Finding a breaking commit by bisecting revisions
