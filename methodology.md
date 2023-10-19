@@ -31,7 +31,7 @@ Shrinking the amount of data you work with to a small or even better tiny data i
 tensor([[0.1, 0.2],
         [0.3, 0.4]])
 ```
-
+than that:
 ```
 tensor([[0.8860, 0.7966, 0.0274,  ..., 0.4142, 0.7156, 0.3564],
         [0.3885, 0.1056, 0.3069,  ..., 0.8970, 0.8329, 0.0012],
@@ -247,7 +247,7 @@ and then the alias won't be activated.
 In the above example, I use `df` with human formatted sizes and I don't want to see dozens of `/dev/loop` entries. But sometimes I want to see inodes count, so I'd use `/bin/df -ih`. I could have created an alias for it, but I do it so rarely that I don't want to pollute my limited memory space in my head.
 
 
-# Cheatsheets
+## Cheatsheets
 
 While aliases are super handy, too many aliases can be difficult to remember, therefore it's also very useful to have various cheatsheets each specific to a sub-field of your occupation. I have a cheatsheet for git, python, gdb, transformers, conda, pip, bash, etc. In those cheatsheets I write very dense one-line comments of what the following line does, a compact output if relevant, and I constantly improve and re-organize them. This helps me to map things out in my head and know where I can quickly find a specific solution. StackOverflow is awesome, but having my own StasOverflow is priceless.
 
@@ -440,7 +440,7 @@ If you work on a tiny 14" laptop or even 17" one consider getting yourself a lar
 
 Let's look at some more practical `watch -n` examples.
 
-Do you have a problem with a program eating up a disc space on some partition and you want to correlate the execution with that partition? Say, it's a partition named `/tmp`
+Do you have a problem with a program eating up a disk space on some partition and you want to correlate the execution with that partition? Say, it's a partition named `/tmp`
 ```
 watch -n 'df -h | grep /tmp'
 ```
@@ -525,10 +525,31 @@ htop --sort-key help
 ```
 
 
-## Power of One-liners
+## Power of One-liner programs
 
-Big import failing - move it into a single import one liner.
+This is a program:
 
+```
+#!/bin/bash
+
+echo this is time
+date
+```
+
+This is a one-liner program
+```
+echo this is time; date
+```
+
+If a program can be reduced to a single line that can be copy-n-pasted into the command prompt and immediately executed you have a one-liner.
+
+Use case: an import failing - move it into a single import one liner. For example, if you have `import torch` failing, test it standalone:
+
+```
+python -c "import torch"
+```
+
+Use case: a large program failing due to a model or tokenizer or config loading failing after a sizeable overhead of loading other things. Move that failing component out into a one-liner and test it alone. One common example is when you use a private HF hub repo and you are missing an auth token and you wan to debug that. Let's move it into a one liner:
 
 ```
 python -c 'import sys; from transformers import AutoModel; AutoModel.from_pretrained(sys.argv[1])' t5-small
@@ -536,14 +557,47 @@ python -c 'import sys; from transformers import AutoTokenizer; AutoTokenizer.fro
 python -c 'import sys; from transformers import AutoConfig; AutoConfig.from_pretrained(sys.argv[1])' t5-small
 ```
 
+I also use this method for pre-downloading/caching large models (which could take up to hours to download) as I can run this in parallel with developing the software that will use that.
 
-## Running out of resources: disc space, cpu memory, gpu memory
+Note how I parameterized the model name via `sys.argv[1]` so now it's very easy to switch from `t5-small` to any other model, rather than doing the same by needing to modify the code itself.
+
+Key benefits of using one-liners over real programs:
+- you can save many variations of the same one-liner is a file and then refer to them later and immediately make use of any of these with a simple copy-n-paste
+- it's atomic during the debug, if you always run the same program name and change it, it could be difficult to track how the program has changed between the runs - the one liner doesn't change and you can run `history` and see exactly what was run and in what sequence
+- if you want to change something quickly it's easier to make the change immediately on the command line
+- when working on a remote system you don't need to copy the program from your desktop - you can just paste it
+- once run it's in the shell history - so it's very easy to iterate over previously run one-liners
+
+footnote: stepping aside from the discussion of debugging I use one-liners for refactoring/renaming - since I can then share these with others who are impacted by my changes and they can just copy-n-paste my commands and immediately update their code to adapt to the new API. I did a lot of those in HF transformers' PRs, e.g. [this one](https://github.com/huggingface/transformers/pull/7863) where I did things like:
+```
+find . -type d -name ".git" -prune -o -type f -exec \
+perl -pi -e 's|require_multigpu|require_torch_multigpu|g' {} \;
+```
+where I rename a function in all files carefully skipping the `.git` directory. One can of course the same using their IDE, but then you have to tell others to do more work if they have to manually update their diverging branches, or to users if you're intentionally changing the API. So, hey, we have just changed the API, please run this one-liner on your code when you updated to the latest package - a breeze and things continue working for the users despite API changes.
+
+As you warm up to the joy and profit of using one-liners make sure to empower yourself with [
+Handy shell shortcuts](#handy-shell-shortcuts) to navigate the command line quickly and learn [how to use bash history](#use-bash-history) to quickly bring previously run one-liners to the fore.
+
+Now you will observe how I use a lot more Perl one-liners in this guide, rather than Python one-liners as Python wasn't designed to be used in this way and so when it works it's mostly accidental. Whereas Perl was designed to be used as part of Unix toolchain and thus it has a myriad of shortcuts that let you do amazing things in just a few short instructions.
+
+As long as you don't need to do anything that comes with `:` in Python, it should mostly work, but as soon as you need to do something like `if a: b()` it breaks due to its parser. It's possible to hack around it using methods like:
+
+```
+# delegate \n injection to shell:
+python -c "$(echo -e "a='True'\nif a : print(1)")"
+# same with exec:
+python -c "import torch; exec('with torch.cuda.device(0):\n  x = torch.ones(1,1)')"
+```
+but this is already very difficult to comprehend so the befit is greatly reduced. Though I saved these recipes as sometimes I still want this available to me over a real program.
+
+
+## Running out of resources: disk space, cpu memory, gpu memory
 
 
 
 ### Emulate an almost full partition
 
-If you're dealing with running out of disc space during some process. For example, say, you have a process like `tar` crashes because `/tmp` runs out of disc space while it runs, but this happens after 10min of running, which is too slow. You can then precipitate the event by filling up the partition to almost full and then the even will arrive much faster. One of the ways of doing that is to quickly create a large file of the size you desire. For example, if you have 29GB free and you want to leave only 1GB free, then create a 28GB file with:
+If you're dealing with running out of disk space during some process. For example, say, you have a process like `tar` crashes because `/tmp` runs out of disk space while it runs, but this happens after 10min of running, which is too slow. You can then precipitate the event by filling up the partition to almost full and then the even will arrive much faster. One of the ways of doing that is to quickly create a large file of the size you desire. For example, if you have 29GB free and you want to leave only 1GB free, then create a 28GB file with:
 ```
 cd /tmp
 dd if=/dev/zero of=/tmp/tmp.bin bs=1G count=28
