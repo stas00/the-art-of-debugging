@@ -574,7 +574,7 @@ Here we tell `dd` to create a file `/tmp/tmp.bin` which is comprised of 28 1GB c
 
 And now when you re-run your program it'll should fail quickly since that partition is almost full from the get going.
 
-This approach works, but it isn't great since it could impact your system's functioning. Instead you can just create a temporary RAM-based filesystem of 1GB and then tell the application to use it instead of the default `/tmp` partition for all of its tempfile needs.
+This approach works, but it isn't great since it could impact your system's functioning. Instead you can just create a temporary RAM-based filesystem of 1GB and then tell the application to use it instead of `/tmp`.
 
 Step 1. create a 1GB `tmpfs` and mount it at `~/ramdisk`:
 ```
