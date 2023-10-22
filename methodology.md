@@ -593,7 +593,7 @@ When finished unmount this partition to free up the used CPU memory:
 sudo umount ~/ramdisk
 ```
 
-### Emulating with running out of cpu memory
+### Emulating running out of cpu memory
 
 If the application fails because it runs out of memory, but it occurs after many minutes/hours of waiting and you want to precipitate that event you could reduce your available CPU memory by quickly allocating as many GBs as you need.
 
