@@ -1,4 +1,4 @@
-# Methodology
+# Fast Debugging Methodology
 
 This chapter discusses various methodologies for fast and successful debugging.
 
