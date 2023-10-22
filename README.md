@@ -20,7 +20,7 @@ Writing about debugging in the void is very difficult and since I haven't been s
 
 ## TOC
 
-## [General Methodology](./methodology.md)
+## [Fast Debugging Methodology](./methodology.md)
 
 
 The following chapters aren't yet ready:
