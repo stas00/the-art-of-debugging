@@ -381,6 +381,15 @@ I often freely switch between Bash, Python And Perl one-liners depending on what
 
 recommendation: Do not use other people's cheatsheets other than as a fodder and inspiration. Make your own and format it so that you can quickly find what you need and once found you can instantly get it.
 
+Here are some of my cheatsheets if you need a starter:
+- [python](https://github.com/stas00/python-tools/blob/main/python.txt
+- [git](https://github.com/stas00/git-tools/blob/master/git.txt
+- [bash](https://github.com/stas00/bash-tools/blob/main/bash.txt
+- [make](https://github.com/stas00/make-tools/blob/main/make.txt
+- [conda](https://github.com/stas00/conda-tools/blob/master/conda.txt
+
+
+
 
 ## Automate diagnostics, minimize or avoid typing
 
