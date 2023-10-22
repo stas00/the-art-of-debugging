@@ -562,7 +562,7 @@ but this is already very difficult to comprehend so the befit is greatly reduced
 
 ### Emulating an almost full disk partition
 
-Sometimes you have to deal with running out of disk space while running a program. For example, let's say, you have a process which besides many other things untars a file and which comes down crashing because `/tmp` runs out of disk space while it runs, but this happens after 10min of running, which is too too long of a wait time to be productive.
+Sometimes you have to deal with running out of disk space while running a program. For example, let's say, you have a process which besides many other things untars various files and which comes down crashing because `/tmp` runs out of disk space while it runs, but this happens after 10min of running, which is too too long of a wait time to be productive.
 
 You can then precipitate the event by filling up the partition to almost full and then the event will arrive much faster. One of the ways of doing that is to quickly create a large file of the size you desire. For example, if you have 29GB free and you want to leave only 1GB free, then create a 28GB file with:
 ```
@@ -572,7 +572,9 @@ dd if=/dev/zero of=/tmp/tmp.bin bs=1G count=28
 
 Here we tell `dd` to create a file `/tmp/tmp.bin` which is comprised of 28 1GB chunks.
 
-But this approach isn't great since it could impact your system's functioning. Instead you can just create a temporary RAM-based filesystem of 1GB and then tell the application to use it instead of `/tmp`.
+And now when you re-run your program it'll should fail quickly since that partition is almost full from the get going.
+
+This approach works, but it isn't great since it could impact your system's functioning. Instead you can just create a temporary RAM-based filesystem of 1GB and then tell the application to use it instead of the default `/tmp` partition for all of its tempfile needs.
 
 Step 1. create a 1GB `tmpfs` and mount it at `~/ramdisk`:
 ```
