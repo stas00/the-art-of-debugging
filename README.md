@@ -6,7 +6,7 @@ This guide will teach you how to:
 
 footnote: adapted from Perl's slogan: "Easy things should be easy and hard things should be possible".
 
-This is a work-in-progress collection of methodologies and copy-n-paste recipes for successful debugging of simple and complicated software problems. Some sections are quite complete, while other will be finished at a later stage, and yet other aren't yet even started.
+This is a work-in-progress collection of methodologies and copy-n-paste recipes for successful debugging of simple and complicated software problems. Some sections are quite complete, while other will be finished at a later stage, and yet other haven't been started.
 
 
 ## Intro
@@ -31,6 +31,12 @@ The following chapters aren't yet ready:
 ## [Debugging Python](./python.md)
 
 
+
+## Requests
+
+If you're struggling with a particular use-case not yet covered here, please open an [Issue](https://github.com/stas00/the-art-of-debugging/issues) where you explain in details the situation, how it can be reproduced and hopefully I can help you find a working approach or at least make some suggestions that may help unblocking you.
+
+Unless this is urgent please hold on on those requests for a bit while I write out the bulk of the know-how as chances are it'll be already covered here.
 
 ## Contributing
 
