@@ -586,13 +586,13 @@ Step 2. run the application, .e.g., `myprogram`:
 TMPDIR=~/ramdisk myprogram
 ```
 
-`TMPDIR` is a special environment variable that allows you to override where the application will write to for their tempfs needs, instead of the default `/tmp`.
+`TMPDIR` is a special environment variable that allows you to override where the application will write to for their tempfile/tmpfs needs, instead of the default `/tmp`.
 
-The additional advantage is that this filesystem is faster than your normal storage.
+The additional advantage is that this filesystem is much faster than your normal storage.
 
-Just beware that `tmpfs` uses virtual volatile memory. When you unmount this partition or reboot your system all files created in that partition will disappear. You can read about tmpfs [here](https://www.kernel.org/doc/html/latest/filesystems/tmpfs.html).
+Just beware that `tmpfs` uses volatile virtual memory. When you unmount this partition or reboot your system all files created in this partition will disappear. You can read about tmpfs [here](https://www.kernel.org/doc/html/latest/filesystems/tmpfs.html).
 
-When finished unmount this partition to free up the used CPU memory:
+When finished with the debug, unmount this partition to free up the borrowed CPU memory:
 ```
 sudo umount ~/ramdisk
 ```
