@@ -1,5 +1,6 @@
 # Methodology
 
+This chapter discusses various methodologies for fast and successful debugging.
 
 ## Quick Iterations, Small Payload
 
@@ -482,47 +483,11 @@ But `ps` can give me much more narrowing power, since you can filter by more thi
 
 Sometimes when you try to debug excessive resource usage, the code runs too fast to be able to see the level of consumption in an external monitor. In this situation injecting `sleep` calls in the code being debugged, usually right after the code which is a suspect to overuse a resource in question, can be very helpful during debug when you need to watch resource usages.
 
-## Narrow down what you monitor
-
-Say you want to watch the processes using `top`, which shows various statistics about processes - this is both confusing filter:
-
-
+As you have seen in the example from the section above:
 ```
-# generate ps auxc output for specific processes and show RSS in GBs
-ps auxc | grep python | perl -plae '$F[5]=sprintf q[%0.3fGB],$F[5]/2**20; $_=qq[@F]' | column -t
-# same but watch like top
-watch -n 0.5 $'ps auxc | grep python | perl -plae \'$F[5]=sprintf q[%0.3fGB],$F[5]/2**20; $_=qq[@F]\' | column -t'
-# same as above + alias
-alias watch-python=$'watch -n 0.5 \'ps auxc | grep python | perl -plae "\$F[5]=sprintf q[%0.3fGB],\$F[5]/2**20; \$_=qq[@F]" | column -t | grep python\''
-#
-# same as above but with ps headers
-(ps auxc | head -1; ps auxc | grep python | perl -plae '$F[5]=sprintf q[%0.3fGB],$F[5]/2**20; $_=qq[@F]') | column -t
-# same as above + watch
-watch -n 0.5 $'(ps auxc | head -1; ps auxc | grep python | perl -plae \'$F[5]=sprintf q[%0.3fGB],$F[5]/2**20; $_=qq[@F]\') | column -t'
-# same as above + alias
-alias watch-python=$'watch -n 0.5 \'(ps auxc | head -1; ps auxc | grep python | perl -plae "\$F[5]=sprintf q[%0.3fGB],\$F[5]/2**20; \$_=qq[@F]") | column -t\''
-#
-# same again, but in a more complicated way - over-complicated but works
-ps auxc | perl -ae 'push @x,qq[@F] if !@x; $F[5]=sprintf q[%0.3fGB],$F[5]/2**20; push @x,qq[@F] if $F[10]=~/python/; END {$,=qq[\n]; print @x}' | column -t
-# same as above and watch
-watch -n 0.5 'ps auxc | perl -ae "push @x,qq[@F] if !@x;; \$F[5]=sprintf q[%0.3fGB],\$F[5]/2**20; push @x,qq[@F] if \$F[10]=~/python/; END {\$,=qq[\n]; print @x}" | column -t'
-# same and make alias
-alias watch-python=$'watch -n 0.5 \'ps auxc | perl -ae "push @x,qq[@F] if !@x; \$F[5]=sprintf q[%0.3fGB],\$F[5]/2**20; push @x,qq[@F] if \$F[10]=~/python/; END {\$,=qq[\n]; print @x}" | column -t\''
+perl -le '$|=1; $gbs=10; $b="A"; $gb = $b x 2**30; $y .= $gb and print $_  for 2..$gbs; sleep 20'
 ```
-
-```
-# top
-# to filter out only a wanted program that may not be running yet
-top, then o, then COMMAND=python
-# to filter already running programs - it will not add new programs started after this command
-top -p `pgrep -d "," java`
-
-# htop - more flexible for filtering
-# filter by python, sort by RSS, only show my procs
-htop -F python -s M_RESIDENT -u `whoami`
-# to get the full list of cols to sort by
-htop --sort-key help
-```
+After we made this one liner to allocate 10GB of CPU memory, we sleep for 20 seconds so that we could observe this memory being allocated in `top` or another tool.
 
 
 ## Power of One-liner programs
@@ -999,34 +964,6 @@ Important: when you exit the shell it'll also revoke the job allocation if it's 
 note: if you don't specify `bash` at the end of `salloc` you will get auto-ssh'ed into the node that got allocated via `salloc` which you might prefer instead of remaining on the original node. But it can only work with a single node. This is somewhat similar to using the `--pty` flag.
 
 
-## strace
-
-Say you get a: "No space left on device" traceback, but it doesn't tell you which file it failed to write to.
-
-You could try to go and figure out where the file handle was opened in the code, but often it can be far from trivial.
-
-strace comes to help:
-
-
-```
-687222 openat(AT_FDCWD, "/tmp/tmp5_gxu46v", O_RDONLY|O_CLOEXEC <unfinished ...>
-```
-
-
-## blackbox approach to complex systems
-
-
-
-## when to use print vs CLI debugger vs IDE debugger
-
-Usually one has three major approaches to debugging the variables and states inside software: manually injected `print`,
-
-For a quick
-
-IDE Debuggers
-
-Tools like [PyCharm](https://www.jetbrains.com/pycharm/) have incre
-
 
 
 ## Handy shell shortcuts
@@ -1130,6 +1067,62 @@ So if you're managing your experiment commands in a file this will allow you to 
 
 
 
-## Create useful time saving aliases
 
-Whenever you find
+## Debugging with large payloads
+
+At some point when the software doesn't fail to run any longer you have to switch to real large data and/or large model to do quality testing.
+
+This often can be done gradually so that you increase only one dimension. For example with the Machine Learning you have the dimensions of data size, model size, and sequence length. Thus it's enough to start getting a high quality output with just using a larger pretrained model, while keeping your data small and using a very small sequence length.
+
+Try to find the smallest model that produces quality output first, and not the full huge model if that's the final goal.
+
+In this use case jupyter/ipython and similar persistent environments are excellent because they allow you not to wait for the data to get loaded again and again while you do experiments.
+
+Install the interactive python environment first (or `jupyter` if you prefer that) and let's install HF's `transformers` that we will use in the demonstration:
+```
+pip install ipython
+pip install transformers
+```
+
+Next launch it:
+```
+ipython
+```
+
+Now for example let's load a large model and its tokenizer once and then re-run your debug code on it multiple times:
+
+```
+from transformers import AutoModelForCausalLM, AutoTokenizer
+mname = "gpt2"
+model = AutoModelForCausalLM.from_pretrained(mname)
+tokenizer = AutoTokenizer.from_pretrained(mname)
+```
+
+At this point the model is loaded into the memory and now we can query it:
+```
+query = "Winter follows autums"
+model_inputs = tokenizer([query], return_tensors="pt")
+generated_ids = model.generate(**model_inputs)
+tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
+```
+This prints:
+```
+Out[2]: 'Winter follows autums from the late 1960s to the early 1970s. The film is based on'
+```
+and now you can modify the query and rerun:
+```
+query = "The best movies are"
+model_inputs = tokenizer([query], return_tensors="pt")
+generated_ids = model.generate(**model_inputs)
+tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
+```
+This prints:
+```
+Out[3]: 'The best movies are the ones that are the most interesting. The best movies are the ones that are'
+```
+
+You can bring up the previous code snippets using arrow-up, edit them and re-run again and again while avoiding the repeated overhead of loading a large model. Of course, `gpt2` is actually not that large, but this is just a demo.
+
+jupyter is easier to use since you can have multiple code cells and so all of the code is there to edit and re-run selectively.
+
+Though as mentioned earlier ipython/jupyter and other similar persistent interpreter environments can be tricky because the code you run isn't necessarily sequential and thus debugging mistakes can be made.
