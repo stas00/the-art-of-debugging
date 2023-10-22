@@ -490,7 +490,7 @@ perl -le '$|=1; $gbs=10; $b="A"; $gb = $b x 2**30; $y .= $gb and print $_  for 2
 After we made this one liner to allocate 10GB of CPU memory, we sleep for 20 seconds so that we could observe this memory being allocated in `top` or another tool.
 
 
-## Power of One-liner programs
+## The power of one-liner programs
 
 This is a program:
 
@@ -593,7 +593,7 @@ When finished unmount this partition to free up the used CPU memory:
 sudo umount ~/ramdisk
 ```
 
-### Emulating running out of cpu memory
+### Emulating running out of CPU memory
 
 If the application fails because it runs out of memory, but it occurs after many minutes/hours of waiting and you want to precipitate that event you could reduce your available CPU memory by quickly allocating as many GBs as you need.
 
