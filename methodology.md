@@ -560,9 +560,11 @@ but this is already very difficult to comprehend so the befit is greatly reduced
 
 
 
-### Emulate an almost full partition
+### Emulating an almost full disk partition
 
-If you're dealing with running out of disk space during some process. For example, say, you have a process like `tar` crashes because `/tmp` runs out of disk space while it runs, but this happens after 10min of running, which is too slow. You can then precipitate the event by filling up the partition to almost full and then the even will arrive much faster. One of the ways of doing that is to quickly create a large file of the size you desire. For example, if you have 29GB free and you want to leave only 1GB free, then create a 28GB file with:
+Sometimes you have to deal with running out of disk space while running a program. For example, let's say, you have a process which besides many other things untars a file and which comes down crashing because `/tmp` runs out of disk space while it runs, but this happens after 10min of running, which is too too long of a wait time to be productive.
+
+You can then precipitate the event by filling up the partition to almost full and then the event will arrive much faster. One of the ways of doing that is to quickly create a large file of the size you desire. For example, if you have 29GB free and you want to leave only 1GB free, then create a 28GB file with:
 ```
 cd /tmp
 dd if=/dev/zero of=/tmp/tmp.bin bs=1G count=28

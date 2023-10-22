@@ -39,3 +39,10 @@ Tools like [PyCharm](https://www.jetbrains.com/pycharm/) and
 
 bash -x, bash -eo pipe
 make -n
+
+
+## Users wishlist
+
+Users asked to cover the following topics:
+
+Heikki Arponen - One addition suggestion though: remote ssh development. Works great on vs code (can be a pain with pycharm). Debugging DDP can be a bit unstable, but sometimes even that is OK
