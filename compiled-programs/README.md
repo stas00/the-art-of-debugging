@@ -39,7 +39,7 @@ cd the-art-of-debugging
 
 Each section will assume you're in the `the-art-of-debugging` directory when it tells you to `cd` somewhere.
 
-## core files and gdb
+## segmentation fault, core files and gdb
 
 First, we are going to create a program that leads to a segmentation fault and generates us a simple `core` file that we could use for the demonstration purposes.
 
