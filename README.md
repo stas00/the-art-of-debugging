@@ -26,9 +26,11 @@ Writing about debugging in the void is very difficult and since I haven't been s
 
 ## [Debugging and Troubleshooting ML Projects](https://github.com/stas00/ml-engineering/tree/master/debug) (external)
 
-The following chapters aren't yet ready:
+The following chapters are just starting out:
 
-## [Debugging Python](./python.md)
+## [Debugging Python](./python/)
+
+## [Debugging Unix Tools](./unix/)
 
 
 

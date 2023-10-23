@@ -1,6 +1,6 @@
 ## Incoming Fodder
 
-Please ignore this file, This is just a dump of ideas that I'd like to expand on in the future
+Please ignore this file. This is just a dump of ideas that I'd like to expand on in the future
 
 
 
