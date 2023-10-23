@@ -13,8 +13,8 @@ Aborted (core dumped)
 ```
 
 ```
-./dl1: error while loading shared libraries: libmyutil.so: cannot open shared object file: No such file or directory
-
+./dl1: error while loading shared libraries:
+libmyutil.so: cannot open shared object file: No such file or directory
 ```
 
 It's going to arm you with knowledge that will cover shared libraries,  unresolved symbols, `nm`, `ldd`, `LD_LIBRARY_PATH`, `LD_PRELOAD`, `gdb`, etc., using simple demonstrations that you can follow along and use cases from github Issues.
