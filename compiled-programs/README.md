@@ -193,7 +193,7 @@ this will also kill the program. This is again could be useful if the program is
 
 footnote: `strace -p 107903` can be also useful for seeing where the process is stuck, but if it's some serious problem your `strace` could get stuck as well. For example, the latter problem can happen if a process tied to a GPU which stopped functioning and doesn't respond.
 
-### Run the program under gbd
+### Run the program under gdb
 
 Since `gdb` is a debugger you can of course launch the program via `gdb` and step through it until you hit the Segmentation fault. Let's use our example program again:
 ```
