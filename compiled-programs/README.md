@@ -76,7 +76,7 @@ This situation is impossible to diagnose since the core file hasn't been dumped.
 
 You want the core file, since most of the it contains everything you need to understand why the program crashed.
 
-## Get the core file dumped
+### Get the core file dumped
 
 By default your Bash shell might be configured not to dump core files beyond a certain size, so we need to tell it to allow any core file sizes with:
 ```
