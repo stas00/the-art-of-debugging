@@ -22,12 +22,11 @@ Writing about debugging in the void is very difficult and since I haven't been s
 
 ## [Fast Debugging Methodology](./methodology.md)
 
+## [Debugging Compiled Programs](./compiled-programs/)
+
 ## [Debugging and Troubleshooting ML Projects](https://github.com/stas00/ml-engineering/tree/master/debug) (external)
 
 The following chapters aren't yet ready:
-
-## [Debugging Compiled Programs](./compiled.md)
-
 
 ## [Debugging Python](./python.md)
 
