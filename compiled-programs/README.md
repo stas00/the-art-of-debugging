@@ -38,7 +38,7 @@ cd the-art-of-debugging
 
 Each section will assume you're in the `the-art-of-debugging` directory when it tells you to `cd` somewhere.
 
-## segmentation fault, core files and gdb
+## Segmentation fault, core files and gdb
 
 First, we are going to create a program that leads to a segmentation fault and generates us a simple `core` file that we could use for the demonstration purposes.
 
@@ -66,10 +66,24 @@ gcc -g make-segfault.c -o make-segfault
 
 `-g` is for enabling debug.
 
+Now, let's run the program:
+```
+./make-segfault
+Segmentation fault
+```
+
+This situation is impossible to diagnose since the core file hasn't been dumped.
+
+You want the core file, since most of the it contains everything you need to understand why the program crashed.
+
+## Getting the core file dumped
+
 By default your Bash shell might be configured not to dump core files beyond a certain size, so we need to tell it to allow any core file sizes with:
 ```
 ulimit -c unlimited
 ```
+This change is only effective in the shell you run it in.
+
 footnote: for more details see: `man bash` and then search for `ulimit`
 
 footnote: if you use a different shell, check its manpage for its specific way of doing the same - search for `core file` or something similar.
@@ -80,20 +94,51 @@ Now, let's run the program:
 Segmentation fault (core dumped)
 ```
 
-`ls -l` shows no core file, which usually means that the system is configured to send the core file to some other subsystem (e.g. to AppArmor if you're on Ubuntu).
+So this time we can see the program did dump the core, but in my case `ls -l` shows no core file. This usually means that the system is configured to send the core file to some other subsystem (e.g. to `apport` if you're on Ubuntu) or a specific path.
 
-So we need to get the control back and tell the kernel where to save the core files and which format to use. For example running this:
+So we need to get the control back and tell the kernel where to save the core files and which format to use.
+
+Let's first check where the core files are currently sent:
+```
+sysctl kernel.core_pattern
+kernel.core_pattern = |/usr/share/apport/apport %p %s %c %d %P %E
+```
+so indeed you can see that core files are sent to `apport`. I'm going to override this setting with:
 ```
 sudo sysctl -w kernel.core_pattern=/tmp/core-%e.%p.%h.%t
 ```
-will save the core files under `/tmp` using the name of the program, followed by a process id, then machine name and finally a time stamp. So let's now re-run the program again:
+will save the core files under `/tmp/` using the name of the program, followed by the process id, then the hostname and finally the time stamp of when it was run. So let's now re-run the program again:
 
 ```
 $ ./make-segfault
-$ ls -l /tmp/core*
+Segmentation fault (core dumped)
+$ ls -lt /tmp/core*
 -rw------- 1 stas stas 304K Oct 22 20:10 core-make-segfault.150885.hope.1698030657
 ```
 And voila we have the core file.
+
+footnote: as `apport` is a security measure on Ubuntu you may want to restore the `core_pattern` value back to its original `apport` setting.
+
+
+To see the current setting of `kernel.core_pattern` execute:
+```
+/sbin/sysctl kernel.core_pattern
+```
+If you aren't on Ubuntu, chances are that your system is set to just `core`:
+```
+$ /sbin/sysctl kernel.core_pattern
+kernel.core_pattern = core
+```
+which means it'll just save the `core` file in the current directory without any useful tags.
+
+If you want the useful tags and have it saved in the current directory, run:
+```
+sudo sysctl -w kernel.core_pattern=core-%e.%p.%h.%t
+```
+
+footnote: if you don't have `sudo` access lookup valgrind which sometimes helps with this situation or alternatively ask your sysadmin to provide you a way to get the core files dumped.
+
+
 
 ### Get the backtrace from the core file
 
