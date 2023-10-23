@@ -3,12 +3,11 @@
 This chapter will empower you to deal with errors like:
 
 ```
-*** stack smashing detected ***: terminated
-Aborted (core dumped)
+Segmentation fault (core dumped)
 ```
 
 ```
- ImportError: ~/.cache/torch_extensions/py38_cu111/cpu_adam/cpu_adam.so:
+ImportError: ~/.cache/torch_extensions/py38_cu111/cpu_adam/cpu_adam.so:
  undefined symbol: curandCreateGenerator
 ```
 
