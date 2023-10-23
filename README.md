@@ -1,8 +1,8 @@
 # The Art of Debugging
 
 This guide will teach you how to:
-1. Debug normal issues really fast
-2. Make complicated issues possible to debug
+1. **Debug normal issues really fast**
+2. **Make complicated issues possible to debug**
 
 footnote: adapted from Perl's slogan: "Easy things should be easy and hard things should be possible".
 
