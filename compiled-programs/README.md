@@ -170,6 +170,9 @@ This was a super-simple program, but most modern programs will run multiple thre
 (gdb) thread apply all bt full
 ```
 
+use case: [this issue](https://github.com/pytorch/pytorch/issues/59384#issuecomment-854953165) shows a huge traceback from pytorch crashing.
+
+
 ### Get the backtrace from the still running process
 
 There is also a way to attach to an already running process:
@@ -181,6 +184,9 @@ bt
 Modify the process id to match the process that you want to debug.
 
 This approach is very useful if the process is hanging or seems to be spinning consuming a lot of CPU power.
+
+use case: see this [Issue](https://github.com/pytorch/pytorch/issues/60158#issuecomment-865142029) for an example of how this approach was used to diagnose a deadlock in pytorch. This is also a good example of seeing a backtrace for multiple threads in a real application.
+
 
 ### Abort the program while dumping a core file
 
@@ -250,6 +256,8 @@ gdb python
 the difference here is that you need to pass the full path to the program.
 
 `gdb` is super powerful and can do many marvellous things but most of these are out of the scope of this basic introduction. It is very likely that if you understood everything covered so far you should be able to diagnose 95% of most problems you are likely to encounter.
+
+use case: [this issue](https://github.com/pytorch/pytorch/issues/46807#issuecomment-718452462) shows how gdb was used to get a backtrace on a crashing test.
 
 footnote: more useful recipes for python + gdb can be found [here](https://wiki.python.org/moin/DebuggingWithGdb).
 
