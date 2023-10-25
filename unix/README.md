@@ -1,7 +1,34 @@
 # Debugging Unix Tools
 
 
+## Terminal
+
+### Searching terminal's output
+
+Teeing all outputs to `| tee -a log` allows you to later search the outputs, but there are times when you want to search the outputs dumped to the terminal. Therefore it's critical to use a terminal (console) that allows you to search it.
+
+For example, in `konsole` this is `Ctrl-Shift-f`, and it provides a rich searching functionality - normal/regex/highlighting matching/search direction.
+
+To be able to use search when there is a lot of output you want to make sure that your scrollback buffer (i.e. how many lines the terminal shows before it truncates) to a large number - e.g. I have mine set to 20k lines.
+
+Since multiple runs of the same program may produce different outputs it may be confusing to search the terminal outputs since it's hard to tell which is which. In this situation, I call `clear` which clears all outputs in the terminal, before invoking a new command. So that my debug cycle looks like:
+
+```
+clear; ./myprogram --args ...
+```
+So that it's atomic and I never forget to clear the screen. Then the searchable output is always of the last run.
+
+At other times I don't `clear`, since I do want to search previous results.
+
+
+
 ## Bash
+
+
+While the instructions use Bash If you use a different shell a lot of the suggestions will be quite similar with small variations for some settings being different, but the key here is to grasp the concepts and then translate them to the other shell's environment.
+
+
+### Controlling script execution
 
 TLDR: Most of the time it's the best to start Bash scripts with:
 
@@ -25,7 +52,7 @@ set -x
 ```
 The following sections will explain each of these options.
 
-### Trace the execution to see commands and values
+#### Trace the execution to see commands and values
 
 Here is a small bash script `test.sh` that does a few assignments and uses sleep to emulate a slow process:
 ```
@@ -86,7 +113,7 @@ you can instantly see that something is wrong with `x`.
 
 
 
-### Abort on failures inside the script
+#### Abort on failures inside the script
 
 By default Bash scripts will ignore intermediary command failures and will continue the execution, which most of the time is not what you want.
 
@@ -145,7 +172,7 @@ The possible exit codes are listed [here](https://tldp.org/LDP/abs/html/exitcode
 
 
 
-### Abort on failures in the pipeline
+#### Abort on failures in the pipeline
 
 By default Bash scripts will ignore intermediary stage failures in the pipe `|` commands and will continue the execution, which again most of the time is not what you want.
 
@@ -203,7 +230,7 @@ and the exit code is again non-0.
 
 
 
-### Abort on undefined variables
+#### Abort on undefined variables
 
 By default Bash scripts will ignore undefined variables used to construct new variables:
 ```
@@ -255,7 +282,7 @@ echo y=$y
 
 
 
-### Temporarily turning off set commands
+#### Temporarily turning off set commands
 
 Once any of the `set` commands have been enabled if you have an area where you need to disable the guards, you simply use the `set +` setting, for example, let's demo with `set -e`:
 
@@ -284,3 +311,22 @@ prep
 ```
 
 As you can see the broken command on line 5 didn't abort the script, due to `set +e`, but the one at line 7 did, due to `set -e`.
+
+
+
+
+### Being able to copy-n-paste multi-lines
+
+At times I copy-n-paste multiple commands that include new line separators. I wanted this to work correctly and therefore I have this in my `~/.inputrc`:
+```
+set enable-bracketed-paste Off
+```
+
+This setting allows new line copied with the command being pasted instead of making them disappear. You need to restart `bash` for this setting to take an effect.
+
+footnote: `man bash` for more information and if you're using a different shell check its manpage for the equivalent setting.
+
+
+### Informative prompt
+
+XXX:

@@ -1080,7 +1080,39 @@ So if you're managing your experiment commands in a file this will allow you to 
 
 
 
+## Am I editing the right file and the right class?
 
+When just starting a debugging process it might take a few attempts to realize that the wrong file is being edited. That is changes are made but it's unclear if the change took place or even if it's the right file being edited.
+
+In the modern complex systems, you could be editing the source file in the github repo, or its installed version and then you may have 10 different versions of it installed if you have multiple virtual environments.
+
+footnote: If you use the HF hub - it allows bundling modeling code with the model data files, and then it's even more confusing which file should be edited, since now the code is placed where you don't expect it to be. Surely, there are many other situations like this one.
+
+So my approach to quick discovery of the right file is very simple. I purposefully break the file I think I should be editing. That is if I have a file with code like:
+
+```
+def main():
+    x = 5
+    y = 6
+```
+and I know `main` is called, I add `die`:
+```
+def main():
+    die
+    x = 5
+    y = 6
+```
+and launch the program. If I am editing the right file the program will throw an except (and "die") and then I know I can start doing the actual debugging after removing my hack. If the program didn't die that means that either I'm not editing the right file and/or the right function.
+
+Then there is the issue of having multiple classes or functions with the same name and sometimes it can be non-trivial to find which one is the right one. Class inheritance is another use case, as it's not obvious from looking at the code if some method is overridden or not - and which one should be edited.
+
+The exact same solution can be used - find the class/method you think you are debugging and break it. Now you know for sure.
+
+There is nothing special about `die` - it can be whatever string you want that will lead to breakage at run time (not compile time). I use `die` since in Perl it's an actual built-in function and so I'm used to use it there and it so happens that it actually "works" in Python too - works as in serves my intention for the program to die.
+
+Things are a bit more complicated if the program is not interpreted but compiled, as in C/C++ languages, in which case you usually need to first run some `make` command to ensure any modified files have been recompiled. But otherwise the same principle applies - except the intentional "breaking"-process, which would be different depending on the language.
+
+For more Python nuances see [Debugging the right Python package](../python#debugging-the-right-python-package).
 
 
 ## Debugging with large payloads
