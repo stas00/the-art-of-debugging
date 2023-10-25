@@ -20,7 +20,7 @@ Writing about debugging in the void is very difficult and since I haven't been s
 
 ## TOC
 
-## [Fast Debugging Methodology](./methodology.md)
+## [Fast Debugging Methodology](./methodology/)
 
 ## [Debugging Compiled Programs](./compiled-programs/)
 
