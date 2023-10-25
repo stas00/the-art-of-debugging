@@ -101,14 +101,14 @@ $ PYTHONPATH=`pwd`/src:$PYTHONPATH python -c 'import sys; print("\n".join(sys.pa
 ```
 in this example I'm continuing the situation with HF `transformers` where `src` is the base sub-directory inside the git clone, but other projects might have a different subdir or none. Note how `/code/huggingface/transformers-a/src` appears first in the list.
 
-2. you can use the [purposefully break the script approach](../methodology#am-i-editing-the-right-file-and-the-right-class) to validate that the files you're editing are the files that actually get loaded.
+2. You can use the [purposefully break the script approach](../methodology#am-i-editing-the-right-file-and-the-right-class) to validate that the files you're editing are the files that actually get loaded.
 
 
 ## Setting up your test suite to always use the git repo's Python packages
 
 If your test suite relies on the package it tests being preinstalled you are likely to be testing the wrong files. This is usually less of a problem when the git package places the Python packages at the root directory of the repo, but when a project is structured like HF `transformers` where Python packages are placed under `src` or another top-level subdir Python will not find these packages. Also if you launch the tests not from the repo's root directory it'll always fail to find your repo's packages.
 
-There is an easy solution to that. You can see how I did it in [ipyexperiments](https://github.com/stas00/ipyexperiments). I created [tests/conftest.py](https://github.com/stas00/ipyexperiments/blob/master/tests/conftest.py) which contains:
+There is an easy solution to that. You can see how I did it in [ipyexperiments](https://github.com/stas00/ipyexperiments). I created [tests/conftest.py](https://github.com/stas00/ipyexperiments/blob/39c9b454e89e53b74c74dcb579c12ecf3d2161b9/tests/conftest.py#L7-L12) which contains:
 ```
 import sys
 from os.path import abspath, dirname
