@@ -108,7 +108,7 @@ in this example I'm continuing the situation with HF `transformers` where `src` 
 
 If your test suite relies on the package it tests being preinstalled you are likely to be testing the wrong files. This is usually less of a problem when the git package places the Python packages at the root directory of the repo, but when a project is structured like HF `transformers` where Python packages are placed under `src` or another top-level subdir Python will not find these packages. Also if you launch the tests not from the repo's root directory it'll always fail to find your repo's packages.
 
-There is an easy solution to that. You can see how I did it in [ipyexperiments](https://github.com/stas00/ipyexperiments]. I created [tests/conftest.py](https://github.com/stas00/ipyexperiments/blob/master/tests/conftest.py) which contains:
+There is an easy solution to that. You can see how I did it in [ipyexperiments](https://github.com/stas00/ipyexperiments). I created [tests/conftest.py](https://github.com/stas00/ipyexperiments/blob/master/tests/conftest.py) which contains:
 ```
 import sys
 from os.path import abspath, dirname
