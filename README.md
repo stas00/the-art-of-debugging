@@ -22,11 +22,11 @@ Writing about debugging in the void is very difficult and since I haven't been s
 
 ## [Fast Debugging Methodology](./methodology/)
 
-## [Debugging Compiled Programs](./compiled-programs/)
+## [Debugging Compiled Programs](./compiled-programs/) - gdb, ldd, nm, LD_LIBRARY_PATH, LD_PRELOAD
 
-## [Debugging Python](./python/)
+## [Debugging Python](./python/) - py-spy, paths, auto-print
 
-## [Debugging Unix Tools](./unix/)
+## [Unix Tools For Debugging](./unix/) - bash, strace, make
 
 ## [Debugging Machine Learning Projects](https://github.com/stas00/ml-engineering/tree/master/debug) (external)
 
