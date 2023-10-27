@@ -329,7 +329,52 @@ footnote: `man bash` for more information and if you're using a different shell 
 
 ### Informative prompt
 
-XXX:
+Having a powerful shell prompt is extremely useful for quick debugging. You're certainly used to the `user@host /some/path/`, but it can do so much more.
+
+Anything that has to do with the current status is very helpful. If you work with git a lot and have to switch back and forth between different branches and forks. A tool like [bash-git-prompt](https://github.com/magicmonty/bash-git-prompt) is insanely useful.
+
+I have conda env display as part of it. And another useful feature that can be added is to show an indication when the last command failed, luckily `bash-git-prompt` already contains it.
+
+Here is a snapshot of a few commands with `bash-git-prompt` activated:
+
+![bash-git-prompt](images/prompt.png)
+
+I split it up into several steps that I numbered on snapshot.
+
+1. you can see it tells me which conda env I'm in (`py39-pt21`), then the usual path, followed by git information. at this stage it tells me that I'm inside `stas00/ml-engineering` repo and that I'm on `master` branch and that I have 2 files not under git.
+
+2. now I perform a command that failed, sometimes it's important to see that it failed when there is no obvious failure reported, so you can see it has a red `✘` showing up in the next prompt (stage 3).
+
+3. I commit something and you can immediately see `↑1` indicator telling me that I have one commit that is waiting to be pushed - so now I don't forget to push!
+
+4. finally I change conda envs and you can see that it now tells me which conda env I have activated
+
+If for example I have to do git-bisect or switch to a specific git SHA, it'll show it as the current branch. So I'm never confused and need to type commands to figure where I am.
+
+`bash-git-prompt` has many other goodies that show up when you merge, have conflicts, etc.
+
+Now, there are other excellent power prompt tools out there. The key is to find one that will empower your work and make it less error-prone.
+
+If you want to try my customized setup:
+
+```
+cd ~
+git clone https://github.com/magicmonty/bash-git-prompt ~/.bash-git-prompt --depth=1
+cd ~/.bash-git-prompt/themes
+wget https://raw.githubusercontent.com/stas00/the-art-of-debugging/master/unix/bash-git-prompt/Stas.bgptheme
+```
+You way want to inspect [Stas.bgptheme](bash-git-prompt/Stas.bgptheme) first to see that I'm not injecting something into your environment.
+
+and when you're happy add this to your `~/.bashrc`:
+```
+if [ -f "$HOME/.bash-git-prompt/gitprompt.sh" ]; then
+    export GIT_PROMPT_ONLY_IN_REPO=0;
+    export GIT_PROMPT_THEME="Stas"
+    source "$HOME/.bash-git-prompt/gitprompt.sh"
+fi
+```
+and start a new Bash.
+
 
 
 ### strace
