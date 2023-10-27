@@ -341,11 +341,13 @@ Here is a snapshot of a few commands with `bash-git-prompt` activated:
 
 I split it up into several steps that I numbered on snapshot.
 
-1. you can see it tells me which conda env I'm in (`py39-pt21`), then the usual path, followed by git information. at this stage it tells me that I'm inside `stas00/ml-engineering` repo and that I'm on `master` branch and that I have 2 files not under git.
+1. you can see it tells me which conda env I'm in (`py39-pt21`), then the usual path, followed by git information. At this stage it tells me that I'm inside `stas00/ml-engineering` repo and that I'm on `master` branch and that I have 2 files not under git.
 
-2. now I perform a command that failed, sometimes it's important to see that it failed when there is no obvious failure reported, so you can see it has a red `✘` showing up in the next prompt (stage 3).
+2. I have just committed something and you can immediately see `↑1` indicator telling me that I have one commit that is waiting to be pushed - so now I don't forget to push!
 
-3. I commit something and you can immediately see `↑1` indicator telling me that I have one commit that is waiting to be pushed - so now I don't forget to push!
+   I now I perform a command that failed, sometimes it's important to see that it failed when there is no obvious failure reported, so you can see it has a red `✘` showing up in the next prompt (stage 3).
+
+3. Now I make a new branch and you can see that in stage 4, the prompt is updated to reflect that new branch.
 
 4. finally I change conda envs and you can see that it now tells me which conda env I have activated
 
@@ -373,7 +375,7 @@ if [ -f "$HOME/.bash-git-prompt/gitprompt.sh" ]; then
     source "$HOME/.bash-git-prompt/gitprompt.sh"
 fi
 ```
-and start a new Bash.
+and start a new Bash. Remove the line with "Stas" if you want to use the default theme instead.
 
 
 
