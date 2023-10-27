@@ -327,6 +327,8 @@ This setting allows new line copied with the command being pasted instead of mak
 footnote: `man bash` for more information and if you're using a different shell check its manpage for the equivalent setting.
 
 
+
+
 ### Informative prompt
 
 Having a powerful shell prompt is extremely useful for quick debugging. You're certainly used to the `user@host /some/path/`, but it can do so much more.
@@ -376,6 +378,8 @@ if [ -f "$HOME/.bash-git-prompt/gitprompt.sh" ]; then
 fi
 ```
 and start a new Bash. Remove the line with "Stas" if you want to use the default theme instead.
+
+
 
 
 
@@ -501,8 +505,6 @@ strace -o strace.txt python -c "print('strace')"
 ```
 
 Now, since you're might want to strace the program from the very beginning, for example to sort out some race condition on a distributed filesystem, you will want to tell it to follow any forked processes. This what the `-f` flag is for:
-
-
 ```
 strace -o log.txt -f python -m torch.distributed.run --nproc_per_node=4 --nnodes=1 --tee 3 test.py
 ```
@@ -514,3 +516,56 @@ It will conveniently prefix each line with the pid of the program so it should b
 But if you want separate logs per process, then use `-ff` instead of `-f`.
 
 The `strace` manpage has a ton of other useful options.
+
+
+
+## make
+
+`make` is probably one of the most used tools in the Unix world. Many software projects still use `Makefile` to run various commands. `Makefile` is used by `make` to guide it.
+
+Debugging `Makefile` can be non-trivial as it's quite old and arcane, but chances are very high that you will run into troubleshooting it sooner or later.
+
+In order that we have something to work with, let's take the `Makefile` from [ipyexperiments](https://github.com/stas00/ipyexperiments):
+```
+git clone https://github.com/stas00/ipyexperiments
+cd ipyexperiments
+cat Makefile
+```
+
+Unless you're using a modern editor that can automatically detect `Makefile` format and show you where the problems are, one of the main problems is that it requires hard tabs (`\t`) for its formatting. If you don't use hard tabs, you're likely to see something like:
+```
+Makefile:13: *** missing separator.  Stop.
+```
+
+You can ask `cat` to show you all the special characters:
+```
+$ cat -e -t -v Makefile
+[...]
+##@ Testing new package installation$
+$
+test-install: ## test conda/pip package by installing that version them$
+^I@echo "\n\n*** Install/uninstall $(version) conda version"$
+^I@# skip, throws error when uninstalled @conda uninstall -y ipyexperiments$
+[...]
+```
+So it shows `$` for new line characters, and `^I` for hard tabs. If in that output of special `cat` flags you see something like:
+```
+test-install: ## test conda/pip package by installing that version them$
+        @echo "\n\n*** Install/uninstall $(version) conda version"$
+        @# skip, throws error when uninstalled @conda uninstall -y ipyexperiments$
+```
+this is broken, as you have white-spaces and not a real tab. The previous output is the valid one.
+
+One useful flag is `-n`:
+```
+make -n clean
+```
+as it shows you what would be run w/o running it, in case you need to be extra careful.
+
+There is `-d` that is helpful when debugging compilation targets as it dumps a bunch of information about what it does. The less verbose `--debug=b` is probably more practical. `--trace` is in the same category of being verbose with regards to what targets are being rebuilt.
+
+`make -j` will run multiple jobs in parallel. I mention it here in debug section because if the dependencies aren't set correctly `make` might work, but `make -j` might fail, since it may try to build an object that depends on another object that hasn't yet been built. So if someone's build fails with `make -j` try w/o `-j` first. Also it's usually better to specify an actual number of parallel jobs to run, as in `make -j 8`. If you don't specify the number it'll default to the number of cpu cores on your system. And if you have a lot of cores it could be too much for your machine as it'll also create a huge amount of IO.
+
+If you run a complex multi-dir `make`, adding `-w` is useful as it'll log every time it changes a directory.
+
+This is probably the least interesting section of this guide, but it is what it is. For more information please see [GNU make](https://www.gnu.org/software/make/manual/make.html).

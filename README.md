@@ -26,7 +26,7 @@ Writing about debugging in the void is very difficult and since I haven't been s
 
 3. **[Debugging Python](./python/)** - py-spy, paths, auto-print
 
-4. **[Unix Tools For Debugging](./unix/)** - bash, strace, make
+4. **[Unix Tools For Debugging](./unix/)** - bash, strace, make, prompt
 
 5. **[Debugging Machine Learning Projects](https://github.com/stas00/ml-engineering/tree/master/debug)** (external)
 
