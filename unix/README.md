@@ -9,7 +9,9 @@ Teeing all outputs to `| tee -a log` allows you to later search the outputs, but
 
 For example, in `konsole` this is `Ctrl-Shift-f`, and it provides a rich searching functionality - normal/regex/highlighting matching/search direction.
 
-To be able to use search when there is a lot of output you want to make sure that your scrollback buffer (i.e. how many lines the terminal shows before it truncates) to a large number - e.g. I have mine set to 20k lines.
+To be able to use search when there is a lot of output you want to make sure that your scrollback buffer (i.e. how many lines the terminal shows before it truncates it) is set to a large number - e.g. I have mine set to 20k lines.
+
+If you use [`tmux`](https://github.com/tmux/tmux) `Ctrl-b->[` will enter scrollback mode, and vi/emacs (depending on your settings) keys can be used for search/scroll/etc.
 
 Since multiple runs of the same program may produce different outputs it may be confusing to search the terminal outputs since it's hard to tell which is which. In this situation, I call `clear` which clears all outputs in the terminal, before invoking a new command. So that my debug cycle looks like:
 
@@ -19,6 +21,8 @@ clear; ./myprogram --args ...
 So that it's atomic and I never forget to clear the screen. Then the searchable output is always of the last run.
 
 At other times I don't `clear`, since I do want to search previous results.
+
+
 
 
 ### Being able to copy-n-paste multi-lines
