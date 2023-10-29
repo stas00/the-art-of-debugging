@@ -315,7 +315,7 @@ As you can see the broken command on line 5 didn't abort the script, due to `set
 
 
 
-### Being able to copy-n-paste multi-lines
+## Being able to copy-n-paste multi-lines
 
 At times I copy-n-paste multiple commands that include new line separators. I wanted this to work correctly and therefore I have this in my `~/.inputrc`:
 ```
@@ -329,7 +329,7 @@ footnote: `man bash` for more information and if you're using a different shell 
 
 
 
-### Informative prompt
+## Informative prompt
 
 Having a powerful shell prompt is extremely useful for quick debugging. You're certainly used to the `user@host /some/path/`, but it can do so much more.
 
@@ -383,7 +383,7 @@ and start a new Bash. Remove the line with "Stas" if you want to use the default
 
 
 
-### strace
+## strace
 
 (note-to-self: the true source of this is https://github.com/stas00/ml-engineering/blob/master/debug/pytorch.md#strace)
 
