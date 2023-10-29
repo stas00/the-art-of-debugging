@@ -21,6 +21,18 @@ So that it's atomic and I never forget to clear the screen. Then the searchable 
 At other times I don't `clear`, since I do want to search previous results.
 
 
+### Being able to copy-n-paste multi-lines
+
+At times I copy-n-paste multiple commands that include new line separators. I wanted this to work correctly and therefore I have this in my `~/.inputrc`:
+```
+set enable-bracketed-paste Off
+```
+
+This setting allows new line copied with the command being pasted instead of making them disappear. You need to restart `bash` for this setting to take an effect.
+
+footnote: `man bash` for more information and if you're using a different shell check its manpage for the equivalent setting.
+
+
 
 ## Bash
 
@@ -313,18 +325,6 @@ prep
 As you can see the broken command on line 5 didn't abort the script, due to `set +e`, but the one at line 7 did, due to `set -e`.
 
 
-
-
-## Being able to copy-n-paste multi-lines
-
-At times I copy-n-paste multiple commands that include new line separators. I wanted this to work correctly and therefore I have this in my `~/.inputrc`:
-```
-set enable-bracketed-paste Off
-```
-
-This setting allows new line copied with the command being pasted instead of making them disappear. You need to restart `bash` for this setting to take an effect.
-
-footnote: `man bash` for more information and if you're using a different shell check its manpage for the equivalent setting.
 
 
 
