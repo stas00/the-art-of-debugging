@@ -519,6 +519,26 @@ The `strace` manpage has a ton of other useful options.
 
 
 
+## nohup
+
+If you need to connect to a remote server launch a command and either logout or let the connection timeout, normally the command will get terminated upon exit.
+
+`nohup` solves this problem. You just need to add `nohup` before the normal command:
+```
+nohup ./long-running-command &
+```
+and you can now safely logout and it'll continue to run until it runs its course.
+
+any std streams will get saved in `nohup.out`, as `nohup` will pipe `stderr` into the `stdout` stream.
+
+So you may want to redirect it to a log file of your liking:
+
+```
+nohup ./long-running-command log.txt &
+```
+
+
+
 ## make
 
 `make` is probably one of the most used tools in the Unix world. Many software projects still use `Makefile` to run various commands. `Makefile` is used by `make` to guide it.
