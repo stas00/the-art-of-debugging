@@ -37,12 +37,6 @@ Writing about debugging in the void is very difficult and since I haven't been s
 If you found a bug, typo or would like to propose an improvement please don't hesitate to open an [Issue](https://github.com/stas00/the-art-of-debugging/issues) or contribute a PR.
 
 
-## Requests
-
-If you're struggling with a particular use-case not yet covered here, please open an [Issue](https://github.com/stas00/the-art-of-debugging/issues) where you explain in details the situation, how it can be reproduced and hopefully I can help you find a working approach or at least make some suggestions that may help unblocking you.
-
-Unless this is urgent please hold on on those requests for a bit while I write out the bulk of the know-how as chances are it'll be already covered here.
-
 
 ## License
 
