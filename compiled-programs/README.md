@@ -170,7 +170,7 @@ This was a super-simple program, but most modern programs will run multiple thre
 (gdb) thread apply all bt full
 ```
 
-use case: [this issue](https://github.com/pytorch/pytorch/issues/59384#issuecomment-854953165) shows a huge traceback from pytorch crashing.
+case study: [this issue](https://github.com/pytorch/pytorch/issues/59384#issuecomment-854953165) shows a huge traceback from pytorch crashing.
 
 
 ### Get the backtrace from the still running process
@@ -185,7 +185,7 @@ Modify the process id to match the process that you want to debug.
 
 This approach is very useful if the process is hanging or seems to be spinning consuming a lot of CPU power.
 
-use case: see this [Issue](https://github.com/pytorch/pytorch/issues/60158#issuecomment-865142029) for an example of how this approach was used to diagnose a deadlock in pytorch. This is also a good example of seeing a backtrace for multiple threads in a real application.
+case study: see this [Issue](https://github.com/pytorch/pytorch/issues/60158#issuecomment-865142029) for an example of how this approach was used to diagnose a deadlock in pytorch. This is also a good example of seeing a backtrace for multiple threads in a real application.
 
 
 ### Abort the program while dumping a core file
@@ -240,7 +240,7 @@ Here we used:
 
 footnote: run `man gdb` for more information on `gdb`
 
-use case: Sometimes I have one of the tests running under `pytest` segfault. In such a case I run `pytest` via gdb:
+case study: Sometimes I have one of the tests running under `pytest` segfault. In such a case I run `pytest` via gdb:
 ```
 gdb -ex r --args python -m pytest -sv tests/test_failing.py
 ```
@@ -257,7 +257,7 @@ the difference here is that you need to pass the full path to the program.
 
 `gdb` is super powerful and can do many marvellous things but most of these are out of the scope of this basic introduction. It is very likely that if you understood everything covered so far you should be able to diagnose 95% of most problems you are likely to encounter.
 
-use case: [this issue](https://github.com/pytorch/pytorch/issues/46807#issuecomment-718452462) shows how gdb was used to get a backtrace on a crashing test.
+case study: [this issue](https://github.com/pytorch/pytorch/issues/46807#issuecomment-718452462) shows how gdb was used to get a backtrace on a crashing test.
 
 footnote: more useful recipes for python + gdb can be found [here](https://wiki.python.org/moin/DebuggingWithGdb).
 
@@ -650,7 +650,7 @@ Binary files /usr/local/cuda-11.7/nvvm/lib64/libnvvm.so.4.0.0 and /usr/local/cud
 
 Therefore it's crucial that the path `/usr/local/cuda-12.2/nvvm/lib64/` is in `LD_LIBRARY_PATH` when you want to load an application that relies on cuda-12.2. If you have `/usr/local/cuda-11.7/nvvm/lib64/` in there instead, it's very possible the application may crash or complain about some symbol is missing.
 
-use case: in other situations a symbol could be missing because the program wasn't linked properly at build time. Here is
+case study: in other situations a symbol could be missing because the program wasn't linked properly at build time. Here is
 a bug report [undefined symbol curandCreateGenerator for torch extensions](https://github.com/pytorch/pytorch/issues/69666) that demonstrates this exact issue.
 
 ### LD_PRELOAD
