@@ -992,7 +992,7 @@ You need to navigate the prompt line with the command on it quickly. You can use
 - `Alt+f`:  moves one word forward.
 - `Alt+b`:  moves one word backward.
 
-Similarly to how arrows are slow to move the curser, `Del` and `Backspace` are slow to delete characters. You can instead:
+Similarly to how arrows are slow to move the cursor, `Del` and `Backspace` are slow to delete characters. You can instead:
 
 - `Ctrl+u`: erases everything from the current cursor position to the beginning of the line.
 - `Ctrl+k`: erases everything from the current cursor position to the end of the line.

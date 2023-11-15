@@ -621,7 +621,7 @@ For example, I found I have 2 major versions of `libcrypto+.so` installed:
 /usr/lib/x86_64-linux-gnu/libcrypto++.so.8.6.0
 ```
 
-footnote: `8.6.0` version is decyphered as major=8, minor=6, patch=0
+footnote: `8.6.0` version is deciphered as major=8, minor=6, patch=0
 
 If I list those libraries:
 ```
