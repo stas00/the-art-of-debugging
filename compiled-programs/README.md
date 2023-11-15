@@ -263,7 +263,7 @@ footnote: more useful recipes for python + gdb can be found [here](https://wiki.
 
 
 
-## shared libraries, ld.conf, nm, unresolved symbols, ldd, LD_LIBRARY_PATH, LD_PRELOAD,
+## shared libraries, ld.so.conf, nm, unresolved symbols, ldd, LD_LIBRARY_PATH, LD_PRELOAD,
 
 ### introduction to shared libraries
 
