@@ -442,7 +442,7 @@ Inside util_a()
 as `LD_LIBRARY_PATH` could already be non-empty, usually you might want to use the following strategy instead:
 
 ```
-export LD_LIBRARY_PATH="$1:$LD_LIBRARY_PATH"
+export LD_LIBRARY_PATH=".:$LD_LIBRARY_PATH"
 ```
 As you can see it extends the original value of `LD_LIBRARY_PATH`.
 
