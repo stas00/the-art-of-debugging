@@ -42,7 +42,7 @@ Each section will assume you're in the `the-art-of-debugging` directory when it 
 
 First, we are going to create a program that leads to a segmentation fault and generates us a simple `core` file that we could use for the demonstration purposes.
 
-We will use the program located at the sub-dir `[segfault](./segfault):
+We will use the program located at the sub-dir [`segfault`](./segfault):
 ```
 cd compiled-programs/segfault
 ```
