@@ -46,7 +46,7 @@ The content of this site is distributed under [Attribution-ShareAlike 4.0 Intern
 ## My repositories map
 
 ✔ **Machine Learning:**
- [ML Engineering](https://github.com/stas00/ml-engineering) |
+ [ML Engineering Online Book](https://github.com/stas00/ml-engineering) |
  [ML ways](https://github.com/stas00/ml-ways) |
  [Porting](https://github.com/stas00/porting)
 
