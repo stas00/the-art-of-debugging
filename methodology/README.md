@@ -93,7 +93,7 @@ This also allows you to develop locally on your desktop/laptop w/o you needing t
 
 footnote: as long as you're not a Mac user, who as I understand simply can't have a GPU as of this writing not in their laptop nor even use an eGPU.
 
-footnote: I was able to get a [PCIe version of A100 working in my desktop](https://stasosphere.com/entrepreneur-being/262-getting-nvidia-a100-80gb-pcie-to-work-on-a-consumer-motherboard-with-custom-water-cooling/). I was hoping that I could use [Multi-Instance GPU](https://www.nvidia.com/en-us/technologies/multi-instance-gpu/) in which case I could emulate 7 tiny GPUs and be able to debug multi-node setups, but alas NCCL doesn't support that. But still I do pretty much most of development locally on my desktop, using a powerful GUI debugger in PyCharm](https://www.jetbrains.com/help/pycharm/) because I use tiny models. But won't it be amazing to be able to emulate a full compute node on a desktop computer except with tiny gpus?
+footnote: I was able to get a [PCIe version of A100 working in my desktop](https://stasosphere.com/entrepreneur-being/262-getting-nvidia-a100-80gb-pcie-to-work-on-a-consumer-motherboard-with-custom-water-cooling/). I was hoping that I could use [Multi-Instance GPU](https://www.nvidia.com/en-us/technologies/multi-instance-gpu/) in which case I could emulate 7 tiny GPUs and be able to debug multi-node setups, but alas NCCL doesn't support that. But still I do pretty much most of development locally on my desktop, using a powerful GUI debugger in [PyCharm](https://www.jetbrains.com/help/pycharm/) because I use tiny models. But won't it be amazing to be able to emulate a full compute node on a desktop computer except with tiny gpus?
 
 
 
