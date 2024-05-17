@@ -76,7 +76,7 @@ Even if you have to eventually use real data, still try to use the smallest poss
 For example, if you are debugging a Machine Learning project, that needs to train a 175B-parameter model, you can use a 1B- or even a 125M-parameter model, for basic quality testing. And a 10K-parameter model for debugging the functionality and exceptions.
 
 If you are into Machine Learning and want to go into a detailed process please read:
-[Faster debug and development with tiny models, tokenizers and datasets](https://github.com/stas00/ml-engineering/blob/master/transformers/make-tiny-models.md)
+[Faster debug and development with tiny models, tokenizers and datasets](https://github.com/stas00/ml-engineering/blob/eb81cd46a3b508d7ef6bd3f528134f9b7721918b/debug/make-tiny-models-tokenizers-datasets.md)
 
 
 ## Single process, single cpu, single gpu, local desktop/laptop
