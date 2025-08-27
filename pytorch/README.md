@@ -57,6 +57,7 @@ attn_output, attn_weights = attention_interface((self, query_states, ...)
 ```
 (note the `...` - most args were trimmed for this exemplification), with:
 ```
+import einops
 if not self.skip_all_but_last_attention_debug_mode:
     attn_output, attn_weights = attention_interface(self, query_states, ...)
 else:
@@ -65,7 +66,8 @@ else:
     if self.rotating_layer_counter % self.num_hidden_layers == 0:
         attn_output, attn_weights = attention_interface(self, query_states, ...)
     else:
-        # this feeds bogus data of the right shape - good enough for quick debug
-        attn_output = rearrange(query_states, "bs hc_l sl ... -> bs sl hc_l ...")
+        # this feeds bogus data of the right shape connected to a graph - good enough for debug
+        attn_output = einops.rearrange(query_states, "bs hc sl ... -> bs sl hcl ...")
         attn_weights = None
 ```
+and install `pip install einops` for it to work.
