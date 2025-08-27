@@ -1,5 +1,6 @@
 # Debugging PyTorch
 
+Most of the PyTorch debug notes are in my other book [here](https://github.com/stas00/ml-engineering/blob/master/debug/pytorch.md).
 
 ## Speeding up debug of large models
 
