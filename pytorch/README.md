@@ -327,3 +327,130 @@ You can't imagine how often I use this debug utility in my day-to-day work.  Eve
 ```
 
 For example, here is how I found a memory leak in `all_gather_object`, which you can see from this [Issue](https://github.com/pytorch/pytorch/issues/150798). And there were several other similar leaks in PyTorch I discovered using this tool - all have been fixed since then. But more often, of course, the memory leaks are in my code ;)
+
+
+## Fast debug of PyTorch models
+
+### Reducing the number of layers for big models
+
+When debugging various issues of a specific model and the model is big one might waste a huge amount of time weighting for the huge model to load. However most of the time if the model is comprised of a stack of identical blocks you don't need to have them all loaded. Granted the quality outcome will be broken, but if the issue at hand is related to cpu or gpu memory limits or performance the quality outcome doesn't matter at all.
+
+So the solution here is very simple - reduce the model's number of hidden layers from many to just 1-2. If the layers aren't identical (e.g. some MoE models alternate 2 different block configurations) then ensure you include at least one variation of each. For the purpose of the following demonstrations we will use this MoE model [Qwen/Qwen3-30B-A3B-Instruct-2507](https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507). We have 48 hidden layers there as can be seen from its [config file](https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507/blob/main/config.json).
+
+This model has 2 alternating types of Transformer blocks, so we need to keep at least 2 layers.
+
+The config entry that we want to change is [`num_hidden_layers`](https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507/blob/e67ac5d/config.json#L24)
+
+Let's first run a quick test to demonstrate that even just the model loading time can be much faster, before seeing the huge speedup in the compute time:
+
+```bash
+git clone https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507
+time python -c 'import sys; from transformers import AutoModel; AutoModel.from_pretrained(sys.argv[1])' ./Qwen3-30B-A3B-Instruct-2507
+perl -pi -e 's|"num_hidden_layers": 48|"num_hidden_layers": 2|' Qwen3-30B-A3B-Instruct-2507/config.json
+time python -c 'import sys; from transformers import AutoModel; AutoModel.from_pretrained(sys.argv[1])' ./Qwen3-30B-A3B-Instruct-2507
+```
+
+so here we clone the model locally and then measured how long it took to load the base model:
+
+```
+real    5m59.857s
+user    128m28.088s
+sys     16m33.861s
+```
+then we reduced the number of layers from 48 to 2 and repeated the model loading. This time we get:
+```
+real    0m20.398s
+user    2m9.101s
+sys     2m29.587s
+```
+
+We have 6 minutes loading for the full model vs 20 seconds for the 2 layer model - that's 18x times faster and ~5.5 minutes of waiting time saved!
+
+There are 3 ways to accomplish that.
+
+In this discussion we presume you're using HF Transformers-based models, but the same methodology could be translated to other modeling frameworks.
+
+#### 1. local clone with config edits
+
+After finding the desired model on https://huggingface.co/, clone its git repo to the local disk, modify the `num_hidden_layers` entry in `config.json`, and then load the model from the local clone (same as we have just shown when measuring model loading time).
+
+```bash
+git clone https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507
+perl -pi -e 's|"num_hidden_layers": 48|"num_hidden_layers": 2|' Qwen3-30B-A3B-Instruct-2507/config.json
+python -c 'import sys; from transformers import AutoModel; AutoModel.from_pretrained(sys.argv[1])' ./Qwen3-30B-A3B-Instruct-2507
+```
+Please make sure that you load the locally cloned version, that is:
+```
+- ... from_pretrained("Qwen/Qwen3-30B-A3B-Instruct-2507")
++ ... from_pretrained("./Qwen3-30B-A3B-Instruct-2507")
+```
+
+This approach is useful since you don't need to change the user-end code.
+
+#### 2. editing the config object on the fly
+
+The other even simpler approach is to hack the config object on the fly. This requires no local cloning and is probably the easiest solution, though it requires modifying the end user code:
+```
+python -c 'import sys; from transformers import AutoModel, AutoConfig; \
+c=AutoConfig.from_pretrained(sys.argv[1]); c.num_hidden_layers=2; \
+m=AutoModel.from_pretrained(sys.argv[1], config=c)' Qwen/Qwen3-30B-A3B-Instruct-2507
+```
+
+#### 3. hacking the architecture modeling code
+
+This approach is most useful if you need to deal with multiple models of the same architecture and you don't want to modify the end user code.
+
+First we clone HF Transformers and install its editable version:
+```
+git clone https://github.com/huggingface/transformers/tree/main/src/transformers
+cd transformers
+pip install -e .[dev]
+```
+Now we can tweak the code under `src/transformers` and it will be immediately visible to the Python environment that is being used.
+
+Continuing the example of working with `Qwen/Qwen3-30B-A3B-Instruct-2507` model, we find the place where its architecture modeling code lives in the HF Transformers code base. For example, we can look at the `architectures` field in the [model's  config](https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507/blob/e67ac5d/config.json#L3), which gives us `Qwen3MoeForCausalLM`. We now find the Python module where it lives in the HF Transformers code base:
+
+```
+$ grep -Ir "class Qwen3MoeForCausalLM" src/transformers/models
+src/transformers/models/qwen3_moe/modeling_qwen3_moe.py:class Qwen3MoeForCausalLM(Qwen3MoePreTrainedModel, GenerationMixin):
+src/transformers/models/qwen3_moe/modular_qwen3_moe.py:class Qwen3MoeForCausalLM(MixtralForCausalLM):
+```
+
+So we know it's in `src/transformers/models/qwen3_moe/modeling_qwen3_moe.py` (we don't care for `modular_qwen3_moe.py` in this situation, since it's `modeling_qwen3_moe.py` that gets loaded).
+
+Now we open `src/transformers/models/qwen3_moe/modeling_qwen3_moe.py` in the editor and search for `num_hidden_layers` usages to find where the layers are initialized, which in this case is here:
+
+```
+class Qwen3MoeModel(Qwen3MoePreTrainedModel):
+    def __init__(self, config: Qwen3MoeConfig):
+        super().__init__(config)
+        [...]
+        self.layers = nn.ModuleList(
+            [Qwen3MoeDecoderLayer(config, layer_idx) for layer_idx in range(config.num_hidden_layers)]
+        )
+```
+
+So now we just hack the value of `num_hidden_layers` and we are done:
+```
+class Qwen3MoeModel(Qwen3MoePreTrainedModel):
+    def __init__(self, config: Qwen3MoeConfig):
+        super().__init__(config)
+        [...]
+        config.num_hidden_layers = 2
+        self.layers = nn.ModuleList(
+            [Qwen3MoeDecoderLayer(config, layer_idx) for layer_idx in range(config.num_hidden_layers)]
+        )
+```
+and now as long as this version of HF Transformers is devel-installed (`pip install -e .`) into the running Python environment `Qwen3MoeForCausalLM`-type of models will only use the first 2 layers as if it were the full model.
+
+#### Additional Notes
+
+When you load a pre-trained model while shortening its layers stack, you're going to see a flurry of warnings telling you that some weights have been ignored.
+
+Also I'm reminding that you will end up with a model which will allow you to perform functional checks and tune ups - memory usage and performance, etc. It will not produce garbage and if you measure the loss it'll be very high (though it shouldn't be `NaN`).
+
+You can now measure performance with say 2 and 4 layers and tell how much overhead each layer takes from the difference and extrapolate this to what the full model will need.
+
+Memory usage-wise, unless there is a memory leak, after the first layer finished running, subsequent layers shouldn't consume any additional CPU or GPU memory (other than peak memory) if activation checkpointing is not used and `torch.cuda` memory cache isn't flushed. If activation checkpointing is enabled, then expect each layer to consume the same additional amount of memory as the previous one (of the size of the checkpointed tensor).
+
+You can apply similar hacks to other components that also have stacks of identical code-wise blocks. For example, you could reduce the number of attention heads and then the attention mechanism will run much faster (but of course producing garbage, which is fine most of the time when we focus on functional debugging) or skipping most attention blocks completely. When I was debugging 15M sequence length training using [ALST](https://arxiv.org/abs/2506.13996) - I would only run self-attention in the first layer and then skip it in the rest of the layers - this reduced my testing time from hours to minutes, since very long sequence length using full self-attention has an O(2) quadratic nature. There
