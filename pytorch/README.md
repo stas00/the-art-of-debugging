@@ -1,6 +1,6 @@
 # Debugging PyTorch
 
-Most of the PyTorch debug notes are in my other book [here](https://github.com/stas00/ml-engineering/blob/master/debug/pytorch.md).
+A lot of the PyTorch debug notes are in my Machine Learning Engineering online book [here](https://github.com/stas00/ml-engineering/blob/master/debug/pytorch.md).
 
 
 ## Memory usage
