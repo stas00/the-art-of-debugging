@@ -1,6 +1,6 @@
 # The Art of Debugging Open Book
 
-This guide will teach you how to:
+This evolving book will teach you how to:
 1. **Debug normal issues really fast**
 2. **Make complicated issues possible to debug**
 
