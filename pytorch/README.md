@@ -2,77 +2,6 @@
 
 Most of the PyTorch debug notes are in my other book [here](https://github.com/stas00/ml-engineering/blob/master/debug/pytorch.md).
 
-## Speeding up debug of large models
-
-When debugging PyTorch workflows, as explained in [using small payload](../methodology#2-small-payload) you'd normally try to use tiny random models (see [here how to get and create those](https://github.com/stas00/ml-engineering/blob/master/debug/make-tiny-models-tokenizers-datasets.md). But since some problems only appear at scale it's very likely you'd have to use the full-sized model, which may take many minutes to load and run until it gets to the point of interest, where problems appear.
-
-Given the nature of ML model architectures, they typically use a sequence of identical layers that repeat one after another. Therefore, if a model has say 48 layers, you can shrink it to just 2 layers, which will dramatically speed up both the loading and moving in the code. Of course, the qualitative outcome will be bad, but we aren't concerned with quality if the workload hangs or breaks.
-
-One way to accomplish the model shrinking at the layer dimension is to clone the modeling repo and change `config.json` to a new number of layers, e.g. in HF hub's models edit `config.json`:
-```
-- "num_hidden_layers": 48,
-+ "num_hidden_layers": 2,
-```
-and now load the model from the local cloned path. When the model gets loaded you will get a massive warning of unused weights, but you can ignore that.
-
-Alternatively you can change the modeling code and hardcode the number of layers in the model's `__init__`. For example, if we use `Qwen3MoePreTrainedModel`:
-
-```
-class Qwen3MoeModel(Qwen3MoePreTrainedModel):
-    def __init__(self, config: Qwen3MoeConfig):
-        super().__init__(config)
-        # add this line to load only 2 layers
-        config.num_hidden_layers = 2
-```
-
-This is an easier approach than tweaking `config.json` if you plan to try various models of the same architecture, as you'd only need to tweak the modeling code once and not change the model configs.
-
-If you want to load the full model, but only run a few layers, then you can hack the loop over the layers in the model's `forward`. If the original code in `Qwen3MoeModel.forward` was:
-
-```
-for decoder_layer in self.layers[: self.config.num_hidden_layers]):
-    hidden_states = decoder_layer(...)
-```
-you can change to:
-```
-KEEP_N_LAYERS = 2
-for idx, decoder_layer in enumerate(self.layers[: self.config.num_hidden_layers]):
-    # XXX: shortcut for much faster completion
-    if idx+1 > KEEP_N_LAYERS: continue
-    hidden_states = decoder_layer(...)
-```
-
-Now, let's say you work with a very long sequence length and full attention makes things too slow (because attention is quadratic in compute wrt sequence length). To get the memory allocation right you need to run it at least once (since all layers will use the same amount of memory). Same as with skipping layers, you can skip just attention runs. Let's say we run only attention in the last layer:
-
-In attention `__init__` we set a few flags, let's use `Qwen3MoeAttention`:
-```
-    def __init__(self, config: Qwen3MoeConfig, layer_idx: int):
-        super().__init__()
-        self.skip_all_but_last_attention_debug_mode = True
-        self.rotating_layer_counter = 0
-```
-
-and then in `Qwen3MoeAttention.forward`, we replace:
-```
-attn_output, attn_weights = attention_interface((self, query_states, ...)
-```
-(note the `...` - most args were trimmed for this exemplification), with:
-```
-import einops
-if not self.skip_all_but_last_attention_debug_mode:
-    attn_output, attn_weights = attention_interface(self, query_states, ...)
-else:
-    self.rotating_layer_counter = (self.rotating_layer_counter + 1) % self.num_hidden_layers
-    # we detect the last layer by module counting since we know how many layers there are
-    if self.rotating_layer_counter % self.num_hidden_layers == 0:
-        attn_output, attn_weights = attention_interface(self, query_states, ...)
-    else:
-        # this feeds bogus data of the right shape connected to a graph - good enough for debug
-        attn_output = einops.rearrange(query_states, "bs hc sl ... -> bs sl hcl ...")
-        attn_weights = None
-```
-and install `pip install einops` for it to work.
-
 
 ## Memory usage
 
@@ -153,7 +82,7 @@ which is very difficult to notice. This is typically performed by an `oom-kill` 
 
 note: Moreover in some situations, as in recent kubernetes implementations, the user gets kicked out from the job allocation, which makes it even more difficult to debug. [Kubernetes Silent Pod Killer](https://itnext.io/kubernetes-silent-pod-killer-104e7c8054d9). This k8s "feature" makes no sense to me.
 
-In the world of ML, you're likely to encounter this issue if you're doing massive parallel data preprocessing or you do GPU offloading. But more often when you build python wheels for massive packages like Flash Attention 2.
+In the world of ML, you're likely to encounter this issue if you're doing massive parallel data preprocessing or you do GPU memory offloading to CPU memory. But more often when you build python wheels for massive packages like Flash Attention 2 w/o defining `MAX_JOBS` to be something quite small.
 
 ### Strategic memory allocation tracing
 
@@ -331,11 +260,13 @@ For example, here is how I found a memory leak in `all_gather_object`, which you
 
 ## Fast debug of PyTorch models
 
-### Reducing the number of layers for big models
+### Reducing the number of layers for large models
 
-When debugging various issues of a specific model and the model is big one might waste a huge amount of time weighting for the huge model to load. However most of the time if the model is comprised of a stack of identical blocks you don't need to have them all loaded. Granted the quality outcome will be broken, but if the issue at hand is related to cpu or gpu memory limits or performance the quality outcome doesn't matter at all.
+When debugging PyTorch workflows, as explained in [using small payload](../methodology#2-small-payload) you'd normally try to use tiny random models (see [here how to get and create those](https://github.com/stas00/ml-engineering/blob/master/debug/make-tiny-models-tokenizers-datasets.md). But since some problems only appear at scale it's very likely you'd have to use the full-sized model, which may take a very long time to load and run until it gets to the point of interest, where problems appear.
 
-So the solution here is very simple - reduce the model's number of hidden layers from many to just 1-2. If the layers aren't identical (e.g. some MoE models alternate 2 different block configurations) then ensure you include at least one variation of each. For the purpose of the following demonstrations we will use this MoE model [Qwen/Qwen3-30B-A3B-Instruct-2507](https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507). We have 48 hidden layers there as can be seen from its [config file](https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507/blob/main/config.json).
+Given the nature of ML model architectures, they typically use a sequence of identical layers that repeat one after another. Therefore, if a model has say 48 layers, you can shrink it to just 2 layers, which will dramatically speed up both the loading and moving in the code. Of course, the qualitative outcome will be bad, but we aren't concerned with quality if the workload hangs or breaks.
+
+Therefore in this seciton we will discuss how to reduce the model's number of hidden layers from many to just 1-2. If the layers aren't identical (e.g. some MoE models alternate 2 different block configurations) then ensure you include at least one variation of each. For the purpose of the following demonstrations we will use this MoE model [Qwen/Qwen3-30B-A3B-Instruct-2507](https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507). We have 48 hidden layers there as can be seen from its [config file](https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507/blob/main/config.json).
 
 This model has 2 alternating types of Transformer blocks, so we need to keep at least 2 layers.
 
@@ -351,7 +282,6 @@ time python -c 'import sys; from transformers import AutoModel; AutoModel.from_p
 ```
 
 so here we clone the model locally and then measured how long it took to load the base model:
-
 ```
 real    5m59.857s
 user    128m28.088s
@@ -364,7 +294,7 @@ user    2m9.101s
 sys     2m29.587s
 ```
 
-We have 6 minutes loading for the full model vs 20 seconds for the 2 layer model - that's 18x times faster and ~5.5 minutes of waiting time saved!
+Looking at the `real` entry (wallclock time) we have 6 minutes loading for the full model vs 20 seconds for the shrunk 2-layer model - that's 18x times faster and ~5.5 minutes of waiting time saved!
 
 There are 3 ways to accomplish that.
 
@@ -410,7 +340,7 @@ Now we can tweak the code under `src/transformers` and it will be immediately vi
 
 Continuing the example of working with `Qwen/Qwen3-30B-A3B-Instruct-2507` model, we find the place where its architecture modeling code lives in the HF Transformers code base. For example, we can look at the `architectures` field in the [model's  config](https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507/blob/e67ac5d/config.json#L3), which gives us `Qwen3MoeForCausalLM`. We now find the Python module where it lives in the HF Transformers code base:
 
-```
+```bash
 $ grep -Ir "class Qwen3MoeForCausalLM" src/transformers/models
 src/transformers/models/qwen3_moe/modeling_qwen3_moe.py:class Qwen3MoeForCausalLM(Qwen3MoePreTrainedModel, GenerationMixin):
 src/transformers/models/qwen3_moe/modular_qwen3_moe.py:class Qwen3MoeForCausalLM(MixtralForCausalLM):
@@ -420,7 +350,7 @@ So we know it's in `src/transformers/models/qwen3_moe/modeling_qwen3_moe.py` (we
 
 Now we open `src/transformers/models/qwen3_moe/modeling_qwen3_moe.py` in the editor and search for `num_hidden_layers` usages to find where the layers are initialized, which in this case is here:
 
-```
+```python
 class Qwen3MoeModel(Qwen3MoePreTrainedModel):
     def __init__(self, config: Qwen3MoeConfig):
         super().__init__(config)
@@ -431,7 +361,7 @@ class Qwen3MoeModel(Qwen3MoePreTrainedModel):
 ```
 
 So now we just hack the value of `num_hidden_layers` and we are done:
-```
+```python
 class Qwen3MoeModel(Qwen3MoePreTrainedModel):
     def __init__(self, config: Qwen3MoeConfig):
         super().__init__(config)
@@ -443,6 +373,22 @@ class Qwen3MoeModel(Qwen3MoePreTrainedModel):
 ```
 and now as long as this version of HF Transformers is devel-installed (`pip install -e .`) into the running Python environment `Qwen3MoeForCausalLM`-type of models will only use the first 2 layers as if it were the full model.
 
+If you need to load the full model, but only run a few layers, then you can hack the loop over the layers in the model's `forward`. If the original code in `Qwen3MoeModel.forward` was:
+
+```python
+for decoder_layer in self.layers[: self.config.num_hidden_layers]):
+    hidden_states = decoder_layer(...)
+```
+you can change to:
+```python
+KEEP_N_LAYERS = 2
+for idx, decoder_layer in enumerate(self.layers[: self.config.num_hidden_layers]):
+    # XXX: shortcut for much faster completion
+    if idx+1 > KEEP_N_LAYERS: continue
+    hidden_states = decoder_layer(...)
+```
+
+
 #### Additional Notes
 
 When you load a pre-trained model while shortening its layers stack, you're going to see a flurry of warnings telling you that some weights have been ignored.
@@ -453,4 +399,40 @@ You can now measure performance with say 2 and 4 layers and tell how much overhe
 
 Memory usage-wise, unless there is a memory leak, after the first layer finished running, subsequent layers shouldn't consume any additional CPU or GPU memory (other than peak memory) if activation checkpointing is not used and `torch.cuda` memory cache isn't flushed. If activation checkpointing is enabled, then expect each layer to consume the same additional amount of memory as the previous one (of the size of the checkpointed tensor).
 
-You can apply similar hacks to other components that also have stacks of identical code-wise blocks. For example, you could reduce the number of attention heads and then the attention mechanism will run much faster (but of course producing garbage, which is fine most of the time when we focus on functional debugging) or skipping most attention blocks completely. When I was debugging 15M sequence length training using [ALST](https://arxiv.org/abs/2506.13996) - I would only run self-attention in the first layer and then skip it in the rest of the layers - this reduced my testing time from hours to minutes, since very long sequence length using full self-attention has an O(2) quadratic nature. There
+#### Other shrink-the-stack use cases
+
+You can apply a similar hack to other components that also have stacks of identical code-wise blocks. For example, you could reduce the number of attention heads and then the attention mechanism will run much faster (but of course producing garbage, which is fine most of the time when we focus on functional debugging) or skipping most attention blocks completely.
+
+When I was debugging 15M sequence length training using [ALST](https://arxiv.org/abs/2506.13996) - I would only run self-attention in the first layer and then skip it in the rest of the layers - this reduced my testing time from hours to minutes, since very long sequence length using full self-attention has an O(2) quadratic nature with regards to sequence length it attends to.
+
+Let's say we run only attention in the last layer:
+
+In attention `__init__` we set a few flags, let's use `Qwen3MoeAttention`:
+```python
+    def __init__(self, config: Qwen3MoeConfig, layer_idx: int):
+        super().__init__()
+        self.skip_all_but_last_attention_debug_mode = True
+        self.rotating_layer_counter = 0
+```
+
+and then in `Qwen3MoeAttention.forward`, we replace:
+```python
+attn_output, attn_weights = attention_interface((self, query_states, ...)
+```
+
+(note the `...` - most args were trimmed for this exemplification), with:
+```python
+import einops
+if not self.skip_all_but_last_attention_debug_mode:
+    attn_output, attn_weights = attention_interface(self, query_states, ...)
+else:
+    self.rotating_layer_counter = (self.rotating_layer_counter + 1) % self.num_hidden_layers
+    # we detect the last layer by module counting since we know how many layers there are
+    if self.rotating_layer_counter % self.num_hidden_layers == 0:
+        attn_output, attn_weights = attention_interface(self, query_states, ...)
+    else:
+        # this feeds bogus data of the right shape connected to a graph - good enough for debug
+        attn_output = einops.rearrange(query_states, "bs hc sl ... -> bs sl hcl ...")
+        attn_weights = None
+```
+and, of course, install `pip install einops` for the above code to work.
