@@ -63,6 +63,9 @@ The right side visualization shows how very different memory usage pattern is, i
 
 This shows that even if you don't suspect a memory leak in your code it might still be a good idea to run it through memory profiler and you might get ideas to how to reduce memory usage or at the very least you will have a better feel for what your code is doing with the gpu memory.
 
+Additional important notes:
+- Try to limit the profiler dump to just a few iterations, otherwise when you try to render the results in the browser it's likely to crash. You always want at least 2 iterations since the first one is always an outlier. I usually do 3 iterations.
+
 Additional resources:
 - [Understanding GPU Memory 1: Visualizing All Allocations over Time](https://pytorch.org/blog/understanding-gpu-memory-1/)
 - HF folks made an [improved rendering version](https://huggingface.co/spaces/Leiyre/memory-viz).
