@@ -71,22 +71,6 @@ Additional resources:
 - HF folks made an [improved rendering version](https://huggingface.co/spaces/Leiyre/memory-viz).
 
 
-### Debugging CPU memory OOM
-
-This one is often very tricky to debug especially when a compute node is shared with others and each user gets to enjoy only a slice of the available CPU memory.
-
-Once Resident cpu memory (RSS in `top`) hits the preset limit the program will get killed. There is no nice OOM message like we get with CUDA running out of memory, but you just get a single message:
-
-```
-Killed
-```
-
-which is very difficult to notice. This is typically performed by an `oom-kill` via [cgroups](https://docs.kernel.org/admin-guide/cgroup-v2.html). The `SIGKILL` is not trapable and there is no way to analyse what happens.
-
-note: Moreover in some situations, as in recent kubernetes implementations, the user gets kicked out from the job allocation, which makes it even more difficult to debug. [Kubernetes Silent Pod Killer](https://itnext.io/kubernetes-silent-pod-killer-104e7c8054d9). This k8s "feature" makes no sense to me.
-
-In the world of ML, you're likely to encounter this issue if you're doing massive parallel data preprocessing or you do GPU memory offloading to CPU memory. But more often when you build python wheels for massive packages like Flash Attention 2 w/o defining `MAX_JOBS` to be something quite small.
-
 ### Strategic memory allocation tracing
 
 While external memory profilers can be very useful, often having control over when you take a sample of GPU and CPU memory usage is needed. `see-mem-usage` debug util has been developed by the [Deepspeed project](https://github.com/deepspeedai/deepspeed) and I made some small tweaks to it:
@@ -259,6 +243,81 @@ You can't imagine how often I use this debug utility in my day-to-day work.  Eve
 ```
 
 For example, here is how I found a memory leak in `all_gather_object`, which you can see from this [Issue](https://github.com/pytorch/pytorch/issues/150798). And there were several other similar leaks in PyTorch I discovered using this tool - all have been fixed since then. But more often, of course, the memory leaks are in my code ;)
+
+### CPU Memory
+
+#### Debugging CPU memory OOM
+
+This one is often very tricky to debug especially when a compute node is shared with others and each user gets to enjoy only a slice of the available CPU memory.
+
+Once Resident cpu memory (RSS in `top`) hits the preset limit the program will get killed. There is no nice OOM message like we get with CUDA running out of memory, but you just get a single message:
+
+```
+Killed
+```
+
+which is very difficult to notice. This is typically performed by an `oom-kill` via [cgroups](https://docs.kernel.org/admin-guide/cgroup-v2.html). The `SIGKILL` is not trapable and there is no way to analyse what happens.
+
+note: Moreover in some situations, as in recent kubernetes implementations, the user gets kicked out from the job allocation, which makes it even more difficult to debug. [Kubernetes Silent Pod Killer](https://itnext.io/kubernetes-silent-pod-killer-104e7c8054d9). This k8s "feature" makes no sense to me.
+
+In the world of ML, you're likely to encounter this issue if you're doing massive parallel data preprocessing or you do GPU memory offloading to CPU memory. But more often when you build python wheels for massive packages like Flash Attention 2 w/o defining `MAX_JOBS` to be something quite small.
+
+#### Tracking CPU memory usage
+
+One way was discussed in [Strategic memory allocation tracing](#strategic-memory-allocation-tracing) where you inject `see_memory_usage` during the program execution.
+
+The other way that doesn't require code changes, or a full blown memory profiler, and can be applied to any program is `/usr/bin/time` - do not confuse this with bash-built-in `time` which only report runtime stats. So here is an example:
+
+```bash
+/usr/bin/time -v python -c "import torch"
+        Command being timed: "python -c import torch"
+        User time (seconds): 8.12
+        System time (seconds): 0.24
+        Percent of CPU this job got: 629%
+        Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.33
+        Average shared text size (kbytes): 0
+        Average unshared data size (kbytes): 0
+        Average stack size (kbytes): 0
+        Average total size (kbytes): 0
+        Maximum resident set size (kbytes): 640688
+        Average resident set size (kbytes): 0
+        Major (requiring I/O) page faults: 3
+        Minor (reclaiming a frame) page faults: 75005
+        Voluntary context switches: 489
+        Involuntary context switches: 19
+        Swaps: 0
+        File system inputs: 0
+        File system outputs: 8
+        Socket messages sent: 0
+        Socket messages received: 0
+        Signals delivered: 0
+        Page size (bytes): 4096
+        Exit status: 0
+```
+
+While you can see that it does provide the same measurements as bash's `time`:
+```
+        User time (seconds): 8.12
+        System time (seconds): 0.24
+        Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.33
+```
+
+What we want this time is this line:
+```
+        Maximum resident set size (kbytes): 640688
+```
+This gives us the peak memory used by the program, which is the highest amount of CPU memory the program used at any give point of its run. So if you measured your program needing let's say 200GB of CPU RAM and then you try to run it elsewhere where you only have 132GB of CPU RAM, it'll not work (most likely it will get kiled with [cpu-oom](#debugging-cpu-memory-oom) if cgroups are configured).
+
+As I'm writing this I have this problem where I'm trying to offload some of the model parameters to CPU memory since I can't fit them all into GPU memory but I'm also running out of CPU memory. So what I do is I scale down the setup to remove half the layers of the model I try to use to measure the memory foot print and then I should be able to extrapolate the required memory for the full model. Of course, the other way is to do math, but often it's quicker to just measure usage empirically since math is often insufficient as some components get missed in the calculations. Or potentially you could get more CPU memory ;)
+
+If all you care about is the CPU peak memory report for the program you launched, you can use the ` -f '%M'` flag:
+
+```bash
+/usr/bin/time -f '%M' python -c "import torch"
+640684
+```
+Now you can, for example, feed this number to some other program. You can see that it about matched "Maximum resident set size" from before.
+
 
 
 ## Fast debug of PyTorch models
