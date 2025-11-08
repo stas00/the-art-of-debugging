@@ -341,19 +341,19 @@ $ /usr/bin/time -f '%M' python -c "import torch; t=torch.zeros(2**14,2**15)"
 2588624
 ```
 
-The first run is to check the memory usage to do `import torch`, which amounts to ~625MiB (`640704 / 2**10`)
+The first run is to measure the peak memory that was used to run `import torch`, which amounts to ~625MiB (`640704 / 2**10`).
 
-Then the second run gives us the same plus allocating a tensor of `2**14` by `2**14` in fp32 (default dtype) - so the expected additional memory usage is `2**14*2**14*4 = 1073741824` (4 is for fp32 dtype) or 1024MiB (`1073741824/2**20`). So let's compare the difference: `(1549504 - 640704) / 2**10` => 887.5GiB, so the reported memory came quite short of what it should have reported.
+Then the second run gives us the same plus memory that was needed to allocate a tensor of `2**14` by `2**14` in fp32 (default `torch` `dtype`) - so the expected additional memory usage is `2**14*2**14*4 = 1073741824` (fp32 `dtype` needs 4 bytes per element) or 1024MiB (`1073741824/2**20`). So let's compare the difference: `(1549504 - 640704) / 2**10` => 887.5GiB, so the reported memory came quite short of what we may have expected.
 
-The third run is expected to have used a double of the additional memory used by the 2nd run, since we now allocated `2**14` by `2**15` - following the same math, that tensor would need 2048MiB. And the difference is `(2588624 - 640704) / 2**10` => 1902MiB so we are again short by the same amount as the second analysis.
+The third run is expected to have used a double of the additional memory used by the 2nd run, since we now allocated a 2x larger tensor of shape `2**14` by `2**15` - following the same math, that tensor would need 2048MiB of additional CPU memory. And the difference is `(2588624 - 640704) / 2**10` => 1902MiB so we are again short by about the same amount as the second run vs the first one.
 
-However if we compare the difference in the reported memory used between the second and the third run: `(2588624- 1549504) / 2**10` => 1014 MB it now does check out very closely, since the expected memory difference was 1024MB.
+However, if we compare the difference in the reported memory used between the second and the third run: `(2588624- 1549504) / 2**10` => 1014 MiB it now does check out very closely, since the expected memory difference was 1024MiB.
 
-So what's going on. What is being measured is the peak memory usage, so when we fire off `import torch` it allocates some memory, and releases some, so when we add additional commands, their memory allocation will use some of the memory freed by `import torch`. So now you understand that comparing peak memory usage can be tricky if some memory get released.
+So what's going on here? What is being measured is the peak memory usage, so when we fire off `import torch` it allocates some memory, but also releases some, so when we add additional commands, their memory allocation will use some of the memory freed when `import torch` finished its run. So now you understand that comparing peak memory usage can be tricky if some memory get released, after being allocated.
 
-So this tool is always useful to tell you how much memory was used at the highest point, but it can be tricky comparing variations to the programs's memory usages.
+Thus this tool is always useful to tell you how much memory was used at the highest point, but it can be tricky comparing memory usages of program variations.
 
-Now the next question you're likely to ask is what if you have a launcher that spawns other sub-processes, will it measure the peak memory usage of those sub-processes as well? Usually it does, but I think I have seen situations when it didn't. So let's spawn a sub-process which will run the same `import torch`:
+Now the next question you're likely to ask is what if you have a launcher that spawns other sub-processes. Will it measure the peak memory usage of those sub-processes as well? Usually it does, but I think I have seen situations when it didn't. So let's spawn a sub-process which will run the same `import torch`:
 
 ```bash
 $ /usr/bin/time -f '%M' sh -c 'python -c "import torch" & wait'
