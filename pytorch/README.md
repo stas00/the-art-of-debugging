@@ -262,14 +262,14 @@ note: Moreover in some situations, as in recent kubernetes implementations, the 
 
 In the world of ML, you're likely to encounter this issue if you're doing massive parallel data preprocessing or you do GPU memory offloading to CPU memory. But more often when you build python wheels for massive packages like Flash Attention 2 w/o defining `MAX_JOBS` to be something quite small.
 
-#### Tracking CPU memory usage
+#### Getting program's CPU peak memory usage
 
-One way was discussed in [Strategic memory allocation tracing](#strategic-memory-allocation-tracing) where you inject `see_memory_usage` during the program execution.
+One way was discussed in [Strategic memory allocation tracing](#strategic-memory-allocation-tracing) where you inject `see_memory_usage` during the program execution, but that's invasive and is not always easily doable, especially what if it's not a Python program that is causing the problem.
 
-The other way that doesn't require code changes, or a full blown memory profiler, and can be applied to any program is `/usr/bin/time` - do not confuse this with bash-built-in `time` which only report runtime stats. So here is an example:
+The other way that doesn't require code changes, or a full blown memory profiler, and can be applied to any program is `/usr/bin/time` - do not confuse this with bash-built-in `time` which only reports runtime stats. Let's run an example:
 
 ```bash
-/usr/bin/time -v python -c "import torch"
+$ /usr/bin/time -v python -c "import torch"
         Command being timed: "python -c import torch"
         User time (seconds): 8.12
         System time (seconds): 0.24
@@ -306,19 +306,64 @@ What we want this time is this line:
 ```
         Maximum resident set size (kbytes): 640688
 ```
-This gives us the peak memory used by the program, which is the highest amount of CPU memory the program used at any give point of its run. So if you measured your program needing let's say 200GB of CPU RAM and then you try to run it elsewhere where you only have 132GB of CPU RAM, it'll not work (most likely it will get kiled with [cpu-oom](#debugging-cpu-memory-oom) if cgroups are configured).
+This gives us the peak memory used by the program, which is the highest amount of CPU memory the program used at any given point of its run. So if you measured your program needing let's say 200GB of CPU RAM and then you try to run it elsewhere where you only have 132GB of CPU memory, it'll not work (most likely it will get kiled with [cpu-oom](#debugging-cpu-memory-oom) if cgroups are configured).
 
-As I'm writing this I have this problem where I'm trying to offload some of the model parameters to CPU memory since I can't fit them all into GPU memory but I'm also running out of CPU memory. So what I do is I scale down the setup to remove half the layers of the model I try to use to measure the memory foot print and then I should be able to extrapolate the required memory for the full model. Of course, the other way is to do math, but often it's quicker to just measure usage empirically since math is often insufficient as some components get missed in the calculations. Or potentially you could get more CPU memory ;)
+Note: when it comes to running out of CPU memory regardless of which memory usage reporting tool you use - typically what you want to track is the Resident Set Size metric, which is also known as RSS (e.g., it's one of the column names in the output of `top`). There are many other metrics, but those are usually not useful for this particular need.
+
+As I'm writing this I have this problem where I'm trying to fit a huge model into a given number of GPUs and I'm forced to offload some of the model parameters to CPU memory since I can't fit them all into GPU memory, but I'm also running out of CPU memory. So what I do is I scale down the setup to remove half the layers of the model I try to use to measure the memory footprint and then I should be able to extrapolate the required memory for the full model. Of course, the other way is to do math, to calculate how much memory each tensor consumes, but often it's quicker to just measure usage empirically since math is often insufficient as some components get missed in the calculations. Or potentially you could get more CPU memory ;)
+
+Observation: recently each GPU generation has been getting a sizeable increase in their memory size, however for some reason CSPs continue giving the same amount of CPU memory as the did with GPUS with less memory, which leads to multiple problems and limitations. If you're a CSP reading this please consider future nodes to have at least the same amount of memory as the total GPU memory of the node and then some - at least double or triple would be the best.
 
 If all you care about is the CPU peak memory report for the program you launched, you can use the ` -f '%M'` flag:
 
 ```bash
-/usr/bin/time -f '%M' python -c "import torch"
+$ /usr/bin/time -f '%M' python -c "import torch"
 640684
 ```
-Now you can, for example, feed this number to some other program. You can see that it about matched "Maximum resident set size" from before.
+Now you can, for example, feed this number to some other program - say, you want to get the peak memory usage in a human readable format:
+```bash
+$ /usr/bin/time -f '%M' python -c "import torch" |& perl -ne 'chomp; printf "%0.2fGiB\n", $_/2**20'
+0.61GiB
+```
 
+You can see that it about matched "Maximum resident set size" from before.
 
+Note: the Unix memory measurements are often imprecise, because the memory management is very complex, so if you re-run this example again and again you will see slightly different results.
+
+Now before we can use this as a reliable measurement tool let's check if the reported RSS memory usage checks out:
+
+```bash
+/usr/bin/time -f '%M' python -c "import torch"
+640704
+$ /usr/bin/time -f '%M' python -c "import torch; t=torch.zeros(2**14,2**14)"
+1549504
+$ /usr/bin/time -f '%M' python -c "import torch; t=torch.zeros(2**14,2**15)"
+2588624
+```
+
+The first run is to check the memory usage to do `import torch`, which amounts to ~625MiB (`640704 / 2**10`)
+
+Then the second run gives us the same plus allocating a tensor of `2**14` by `2**14` in fp32 (default dtype) - so the expected additional memory usage is `2**14*2**14*4 = 1073741824` (4 is for fp32 dtype) or 1024MiB (`1073741824/2**20`). So let's compare the difference: `(1549504 - 640704) / 2**10` => 887.5GiB, so the reported memory came quite short of what it should have reported.
+
+The third run is expected to have used a double of the additional memory used by the 2nd run, since we now allocated `2**14` by `2**15` - following the same math, that tensor would need 2048MiB. And the difference is `(2588624 - 640704) / 2**10` => 1902MiB so we are again short by the same amount as the second analysis.
+
+However if we compare the difference in the reported memory used between the second and the third run: `(2588624- 1549504) / 2**10` => 1014 MB it now does check out very closely, since the expected memory difference was 1024MB.
+
+So what's going on. What is being measured is the peak memory usage, so when we fire off `import torch` it allocates some memory, and releases some, so when we add additional commands, their memory allocation will use some of the memory freed by `import torch`. So now you understand that comparing peak memory usage can be tricky if some memory get released.
+
+So this tool is always useful to tell you how much memory was used at the highest point, but it can be tricky comparing variations to the programs's memory usages.
+
+Now the next question you're likely to ask is what if you have a launcher that spawns other sub-processes, will it measure the peak memory usage of those sub-processes as well? Usually it does, but I think I have seen situations when it didn't. So let's spawn a sub-process which will run the same `import torch`:
+
+```bash
+$ /usr/bin/time -f '%M' sh -c 'python -c "import torch" & wait'
+640744
+$ /usr/bin/time -f '%M' python -c "import torch"
+640836
+```
+We get a very similar report with and without a sub-process.
+
+It probably won't measure child's peak memory usage if the child detaches from its parent.
 
 ## Fast debug of PyTorch models
 
