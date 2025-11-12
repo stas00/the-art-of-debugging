@@ -486,16 +486,18 @@ Visual debuggers like VSCode or PyCharm are excellent at showing tensor's conten
 
 #### Inf
 
-Let's use fp16 floating representation for demonstrating how we end up with Infinity numbers. 65504 is the largest normal floating point number that can be represented in fp16 precision. This is slightly below `2**16` due to how this 16 bit number is represented. For details see [this](https://en.wikipedia.org/wiki/Half-precision_floating-point_format).
+Infinity in the context of Machine Learning typically happens where as a result of a computation one or more elements of the tensor overflow.
+
+Let's use fp16 floating point representation for demonstrating how we end up with Infinity numbers. 65504 is the largest normal floating point number that can be represented in the fp16 precision. This is slightly below `2**16` due to how this 16 bit number is represented. For details see [this](https://en.wikipedia.org/wiki/Half-precision_floating-point_format).
 
 Thus we can observe:
 ```bash
 $ python -c "import torch; print(torch.tensor(65504, dtype=torch.float16))"
 tensor(65504., dtype=torch.float16)
-$ $ python -c "import torch; print(torch.tensor(65504+50, dtype=torch.float16))"
+$ python -c "import torch; print(torch.tensor(65504, dtype=torch.float16) + 50)"
 tensor(inf, dtype=torch.float16)
 ```
-The first tensor is fine, but the last one overflows and we get `inf`. If you remember back in the day, models were trained in mixed fp16 precision and this `inf` happened a lot, thus a special scaler was used to move the numbers into the safe numerical range. And that's the reason why bf16 superceeded fp16, since while being less precise it's dynamic range is almost as big as of fp32 despite it too having only 16 bits vs. 32 bits for fp32.
+The first tensor is fine, but the last one overflows when I added `50` to it and we get `inf`. If you remember back in the day, models were trained in fp16 mixed  precision regime and this `inf` happened a lot, thus a special scaler was used to move the numbers into the safe numerical range. And that's the reason why bf16 superceeded fp16, since while being less precise bf16's dynamic range is almost as big as that of fp32 despite it having only 16 bits vs. 32 bits for fp32.
 
 To create an `inf` value on demand:
 ```bash
