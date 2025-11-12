@@ -539,15 +539,13 @@ loss = model.loss_function(
     vocab_size=100,
 )
 ```
-As of `transformers==4.57.1` the above will give you `loss==tensor(nan)`. The issue here is that the special `-100` label, masks tokens from the loss calculation and in the above example, we have 0 tokens that aren't masked. And the loss function fails and returns a NaN. This typically doesn't happen since normally a sample has at least one unmasked token. But if you do sequence sharding and you use SFT you may have huge parts of the sample masked out and you can easily end up with a sample shard that has no unmasked tokens. I have run into this problem when developing [Arctic Long Sequence Training](https://arxiv.org/abs/2506.13996). The original solution I used was:
-
+As of `transformers==4.57.1` the above will give you `loss==tensor(nan)`. The issue here is that the special `-100` label masks tokens to be excluded from the loss calculation and in the above example, we have 0 tokens that aren't masked, since all labels are `-100`. And unfortunately the loss function fails and returns a NaN, instead of `0` - this is most likely a bug in the loss function implementation which makes an assumption that a sample has at least one unmasked token. But if you do sequence sharding and you use SFT you may have huge parts of the sample masked out and you can easily end up with a sample shard where all tokens are masked out. I have run into this problem when developing [Arctic Long Sequence Training](https://arxiv.org/abs/2506.13996). The original solution I used was:
 ```python
 if all((shift_labels == -100).squeeze()):
-    # create a differentiable loss `0` which will also set all the grads to `0` in
-    # `backward` - the effect of this is akin to a perfect score where the model
-    # needs no adjustment since grads will be all zeros.
     loss = (logits.sum() * 0.0).float()
 ```
+
+Here we prevent `loss=NaN` situation and instead create an artifical loss `0`, which will also set all the grads to `0` in `backward` - the effect of this is akin to a perfect score where the model needs no adjustment since grads will be all zeros.
 
 You can see it in context [here](https://github.com/deepspeedai/DeepSpeed/blob/df59f203f40c8a292dd019ae68c9e6c88f107026/deepspeed/runtime/sequence_parallel/ulysses_sp.py#L1184-L1186). Though the code has evolved since then, and you can find a more elaborate version [here](https://www.deepspeed.ai/tutorials/ulysses-alst-sequence-parallelism/#part-1-ulysses-sequence-parallelism-for-hf-transformers) in the loss calculation across sequence parallel ranks section.
 
