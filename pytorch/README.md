@@ -482,7 +482,7 @@ tensor([[0.01, 0.29,  ..., 0.02, 0.41],
 
 Visual debuggers like VSCode or PyCharm are excellent at showing tensor's contents and are much easier to navigate and undestand than `pdb`, where you have to manually control the visualization. I would often step through to some breakpoint copy-n-paste the contents of a tensor before and after into 2 files and then run a comparison between the 2 to see the differences.
 
-### Detecting specific tensor values
+### Detecting problematic tensor values
 
 #### Inf
 
@@ -541,7 +541,7 @@ loss = model.loss_function(
     vocab_size=100,
 )
 ```
-As of `transformers==4.57.1` the above will give you `loss==tensor(nan)`. The issue here is that the special `-100` label masks tokens to be excluded from the loss calculation and in the above example, we have 0 tokens that aren't masked, since all labels are `-100`. And unfortunately the loss function fails and returns a NaN, instead of `0` - this is most likely a bug in the loss function implementation which makes an assumption that a sample has at least one unmasked token. But if you do sequence sharding and you use SFT you may have huge parts of the sample masked out and you can easily end up with a sample shard where all tokens are masked out. I have run into this problem when developing [Arctic Long Sequence Training](https://arxiv.org/abs/2506.13996). The original solution I used was:
+As of `transformers==4.57.1` the above will give you `loss=tensor(nan)`. The issue here is that the special `-100` label masks tokens to be excluded from the loss calculation and in the above example, we have 0 tokens that aren't masked, since all labels are `-100`. And unfortunately the loss function fails and returns a NaN, instead of `0` - this is most likely a bug in the loss function implementation which makes an assumption that a sample has at least one unmasked token. But if you do sequence sharding and you use SFT you may have huge parts of the sample masked out and you can easily end up with a sample shard where all tokens are masked out. I have run into this problem when developing [Arctic Long Sequence Training](https://arxiv.org/abs/2506.13996). The original solution I used was:
 ```python
 if all((shift_labels == -100).squeeze()):
     loss = (logits.sum() * 0.0).float()
