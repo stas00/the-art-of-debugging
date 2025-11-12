@@ -8,6 +8,8 @@ footnote: adapted from Perl's slogan: "Easy things should be easy and hard thing
 
 This is a work-in-progress collection of methodologies and copy-n-paste recipes for successful debugging of simple and complicated software problems. Some sections are quite complete, while other will be finished at a later stage, and yet other haven't been started.
 
+Besides debugging methodologies the second focus of this book is on sharing the best tools I have discovered to get the debugging job done successfully, while ideally "losing the least amount of hair" in the process.
+
 
 ## Intro
 
@@ -16,9 +18,6 @@ I have been developing software since 1995 and a lot of this work involved debug
 Every so often someone I would be debugging some difficult problem with would suggest to share my approaches with the world. I always said that it'd be too difficult to generalize, but recently the planted seed seems to have sprouted and so in the following chapters I will try to share some of the insights to ease this very difficult at times process.
 
 Writing about debugging in the void is very difficult and since I haven't been saving use cases, it will take some time to build this up, so expect these pages to be a Work In Progress (WIP) for many moons. But hopefully some ideas could be relayed to you sooner than later, and they would help to ease your burden of debugging in your professional and play projects.
-
-Besides debugging methodologies the second focus of this book is on sharing the best tools I have discovered to get the debugging job done successfully, while ideally "losing the least amount of hair" in the process.
-
 
 ## Table of Contents
 
