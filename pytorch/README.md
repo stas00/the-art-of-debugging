@@ -536,7 +536,7 @@ So to debug one would need to find which layer and model parameters hit `nan` gr
 from transformers import AutoModelForCausalLM
 model = AutoModelForCausalLM.from_pretrained("gpt2")
 loss = model.loss_function(
-    logits=torch.rand(3,100),
+    logits=torch.rand(3, 100),
     labels=torch.tensor([-100, -100, -100]),
     vocab_size=100,
 )
