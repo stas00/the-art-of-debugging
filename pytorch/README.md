@@ -365,15 +365,181 @@ We get a very similar report with and without a sub-process.
 
 It probably won't measure child's peak memory usage if the child detaches from its parent.
 
+## Debugging Tensors
+
+When developing software or dealing with some bugs during training or inference, or writing unit tests we often need to investigate tensors - their data, their attributes or both. In the following sections we are going to dive into the more efficient ways of doing this work.
+
+### Many ways to dump tensor's values
+
+Sometimes it's just enough to print the contents of the tensor to do some visual comparisons. What gets dumped can be controlled via `torch.set_printoptions`. Here are the most useful config options with annotation:
+
+```python
+torch.set_printoptions(
+    threshold=100000000, # print all data (without ... skipping) - can be huge!
+    sci_mode=False,      # print all data on the same scale of 1 (this disables scientific notation)
+    precision=6,         # print X decimal points for floats (default 4)
+    edgeitems=5,         # when the data is large and skipped, control how many entries are printed on each edge
+    linewidth=120,       # redefine linewidth for when lines are \n-wrapped in printout (default 80)
+                         # if threshold is defined, matrix printing will ignore this setting
+    profile="full",      # printing defaults: "default", "short", "full"
+)
+```
+
+```bash
+$ python -c "import torch; t = torch.rand(100,100); print(t)"
+tensor([[0.5171, 0.5535, 0.4281,  ..., 0.3363, 0.4250, 0.4631],
+        [0.0597, 0.0126, 0.8424,  ..., 0.2475, 0.6926, 0.1892],
+        [0.3671, 0.1032, 0.5224,  ..., 0.5822, 0.1384, 0.2008],
+        ...,
+        [0.1887, 0.9825, 0.8571,  ..., 0.9336, 0.5340, 0.6141],
+        [0.0550, 0.9550, 0.4814,  ..., 0.7614, 0.0469, 0.7668],
+        [0.3372, 0.4856, 0.9879,  ..., 0.8719, 0.7916, 0.1137]])
+```
+
+Sometimes the default 4 decimal places isn't enough, so we can ask for 6 with `precision=6`:
+
+```bash
+$ python -c "import torch; t = torch.rand(100,100); torch.set_printoptions(sci_mode=True); print(t)"
+tensor([[5.7340e-01, 6.1205e-02, 5.5568e-01,  ..., 9.7872e-01, 6.3079e-01, 1.4958e-01],
+        [6.5187e-01, 7.1725e-01, 7.4311e-01,  ..., 1.6829e-01, 2.9124e-01, 9.6725e-01],
+        [2.0276e-01, 7.1093e-01, 1.5570e-01,  ..., 8.5468e-01, 3.3631e-02, 7.2699e-01],
+        ...,
+        [1.3556e-01, 4.1345e-02, 1.1752e-01,  ..., 5.0029e-01, 9.4572e-01, 1.4204e-01],
+        [8.9816e-01, 1.4840e-01, 7.5320e-01,  ..., 2.6070e-01, 8.3193e-01, 9.8864e-01],
+        [2.9861e-01, 8.4406e-01, 6.4992e-01,  ..., 2.2556e-01, 7.4448e-01, 1.7672e-01]])
+```
+
+I often find that when the tensor values are wildly different, forcing the scientific format helps with comparing 2 tensors:
+
+```bash
+$ python -c "import torch; t = torch.rand(100,100); torch.set_printoptions(precision=6); print(t)"
+tensor([[5.7340e-01, 6.1205e-02, 5.5568e-01,  ..., 9.7872e-01, 6.3079e-01, 1.4958e-01],
+        [6.5187e-01, 7.1725e-01, 7.4311e-01,  ..., 1.6829e-01, 2.9124e-01, 9.6725e-01],
+        [2.0276e-01, 7.1093e-01, 1.5570e-01,  ..., 8.5468e-01, 3.3631e-02, 7.2699e-01],
+        ...,
+        [1.3556e-01, 4.1345e-02, 1.1752e-01,  ..., 5.0029e-01, 9.4572e-01, 1.4204e-01],
+        [8.9816e-01, 1.4840e-01, 7.5320e-01,  ..., 2.6070e-01, 8.3193e-01, 9.8864e-01],
+        [2.9861e-01, 8.4406e-01, 6.4992e-01,  ..., 2.2556e-01, 7.4448e-01, 1.7672e-01]])
+```
+
+As you can see now all numbers are on the same scale, so it's very easy to tell a tiny number from a huge number because you can just look at the exponent part.
+
+In all the examples so far most entries were removed and only the first and the last 3 rows and columns were dumped. But sometimes when the tensor is small we might want to see more data, so let's get 4 entries on each edge:
+
+```bash
+$ python -c "import torch; t = torch.rand(100,100); torch.set_printoptions(edgeitems=4); print(t)"
+tensor([[0.0840, 0.9232, 0.3730, 0.9597,  ..., 0.9191, 0.0434, 0.2139, 0.5933],
+        [0.9864, 0.9947, 0.9185, 0.4594,  ..., 0.3290, 0.4087, 0.8190, 0.9482],
+        [0.5856, 0.2450, 0.8197, 0.0203,  ..., 0.1945, 0.5485, 0.1075, 0.8870],
+        [0.9267, 0.1619, 0.2912, 0.3130,  ..., 0.2847, 0.0935, 0.7931, 0.5177],
+        ...,
+        [0.0474, 0.9387, 0.7414, 0.3986,  ..., 0.8736, 0.9317, 0.3980, 0.3655],
+        [0.8092, 0.1236, 0.3780, 0.8210,  ..., 0.8251, 0.1988, 0.8153, 0.1905],
+        [0.7281, 0.0439, 0.4908, 0.4739,  ..., 0.7540, 0.4446, 0.8081, 0.0948],
+        [0.0794, 0.0217, 0.4084, 0.8729,  ..., 0.9080, 0.2556, 0.8687, 0.2528]])
+```
+
+`threshold` allows you to print more data than the default, so for example if you're seeking a needle in a haystack, where most data points are identical but only a few rows or elements are off, you could dump the whole tensor into a file and then run `diff -u a b` between 2 dumps. To exemplify, let's pick a very small 3x3 tensor of 1s and then insert 10 as the needle into the 2nd tensor in position `[1,1]` (the middle):
+
+```bash
+$ python -c "import torch; t = torch.ones(3,3); torch.set_printoptions(threshold=1e10); print(t)" > a
+$ python -c "import torch; t = torch.ones(3,3); t[1,1]=10; torch.set_printoptions(threshold=1e10); print(t)" > b
+$ diff -u a b
+--- a   2025-11-12 02:46:18.000000000 +0000
++++ b   2025-11-12 02:46:25.000000000 +0000
+@@ -1,3 +1,3 @@
+-tensor([[1., 1., 1.],
+-        [1., 1., 1.],
+-        [1., 1., 1.]])
++tensor([[ 1.,  1.,  1.],
++        [ 1., 10.,  1.],
++        [ 1.,  1.,  1.]])
+```
+
+We can see the needle now. Of course, you'd use that in much larger tensors and will probably want to run the diff in some good visual editor so it's much easier to visualize the differences. Here is an example of comparing `a` and `b` in Emacs:
+
+![needle-in-a-hay-stack](images/tensor-needle-in-a-hay-stack.png)
+
+The differences are high-lighted and are easy to see, especially when the real tensors are float numbers with many decimals.
+
+Granted, you don't need to set `set_printoptions(threshold=1e10)` for a 3x3 tensor, so try the above with 100x100. If you don't `set_printoptions(threshold=1e10)` and the needle entry ends up in what `torch` hides in `...` you will not find it. You can accomoplish something similar with `set_printoptions(profile="full")` as explained in the following paragraph.
+
+For conventience, you also have the profiles that you can set via `profile` argument - for example, to get the full tensor set: `set_printoptions(profile="full")`. The 3 types of profile as of this writing are:
+ - "default": what you normally get with 3 entries on each edge of the tensor, 4 decimal places for floats.
+ - "short": 2 entries and 2 decimal places for floats.
+ - "full": print all elements using scientific notation.
+
+Let's demo the "short" profile:
+
+```bash
+$ python -c "import torch; t = torch.rand(100,100); torch.set_printoptions(profile='short'); print(t)"
+tensor([[0.01, 0.29,  ..., 0.02, 0.41],
+        [0.55, 0.34,  ..., 0.42, 0.36],
+        ...,
+        [0.33, 0.93,  ..., 0.76, 0.25],
+        [0.21, 0.22,  ..., 0.37, 0.43]])
+```
+
+Visual debuggers like VSCode or PyCharm are excellent at showing tensor's contents and are much easier to navigate and undestand than `pdb`, where you have to manually control the visualization. I would often step through to some breakpoint copy-n-paste the contents of a tensor before and after into 2 files and then run a comparison between the 2 to see the differences.
+
+### Detecting specific tensor values
+
+#### Inf
+
+Let's use fp16 floating representation for demonstrating how we end up with Infinity numbers. 65504 is the largest normal floating point number that can be represented in fp16 precision. This is slightly below `2**16` due to how this 16 bit number is represented. For details see [this](https://en.wikipedia.org/wiki/Half-precision_floating-point_format).
+
+Thus we can observe:
+```bash
+$ python -c "import torch; print(torch.tensor(65504, dtype=torch.float16))"
+tensor(65504., dtype=torch.float16)
+$ $ python -c "import torch; print(torch.tensor(65504+50, dtype=torch.float16))"
+tensor(inf, dtype=torch.float16)
+```
+The first tensor is fine, but the last one overflows and we get `inf`. If you remember back in the day, models were trained in mixed fp16 precision and this `inf` happened a lot, thus a special scaler was used to move the numbers into the safe numerical range. And that's the reason why bf16 superceeded fp16, since while being less precise it's dynamic range is almost as big as of fp32 despite it too having only 16 bits vs. 32 bits for fp32.
+
+To create an `inf` value on demand:
+```bash
+$ python -c "import torch; print(torch.tensor(float('inf')))"
+tensor(inf)
+```
+
+To check whether a tensor contains `inf` values:
+```python
+torch.isinf(t).any() # at least one Inf
+torch.isinf(t).all() # all values are Inf
+```
+
+I created a special tool for helping to detect Overflow and Underflow values layer by layer, which can be found at [Underflow and Overflow Detection](https://github.com/stas00/ml-engineering/blob/master/debug/underflow_overflow.md).
+
+#### NaN
+
+`NaN` stands for not-a-number - you're most likely to see this in the loss during model training, typically this happens when the learning rate is too high, or the data is really bad, the optimizer fails to do its work and the loss literally breaks becoming a `NaN`.
+
+In the previous section we explained that when a floating point number overflows it becomes an `inf`. `inf` and `nan` are very related, because `inf` turns into `nan` quite easily, e.g. multiplying `0` by `inf`:
+```bash
+$ python -c "import torch; print(0*torch.tensor(float('inf')))"
+tensor(nan)
+```
+Most of the time `nan` happens to one or more gradient values during `backward` pass, and once `loss` becomes a NaN it's impossible to recover from it.
+
+To check whether a tensor contains `nan` values:
+```python
+torch.isnan(t).any() # at least one NaN
+torch.isnan(t).all() # all values are NaN
+```
+
+So to debug one would need to find which layer and model parameters hit `nan` gradients.
+
+
 ## Fast debug of PyTorch models
 
 ### Reducing the number of layers for large models
 
 When debugging PyTorch workflows, as explained in [using small payload](../methodology#2-small-payload) you'd normally try to use tiny random models (see [here how to get and create those](https://github.com/stas00/ml-engineering/blob/master/debug/make-tiny-models-tokenizers-datasets.md). But since some problems only appear at scale it's very likely you'd have to use the full-sized model, which may take a very long time to load and run until it gets to the point of interest, where problems appear.
 
-Given the nature of ML model architectures, they typically use a sequence of identical layers that repeat one after another. Therefore, if a model has say 48 layers, you can shrink it to just 2 layers, which will dramatically speed up both the loading and moving in the code. Of course, the qualitative outcome will be bad, but we aren't concerned with quality if the workload hangs or breaks.
+Given the nature of ML model architectures, they typically use a sequence of identical layers that repeat one after another. Therefore, if a model has, say, 48 layers, you can shrink it to just 2 layers, which will dramatically speed up both the loading and running the code. Of course, the qualitative outcome will be bad, but we aren't concerned with quality if the workload hangs or breaks.
 
-Therefore in this seciton we will discuss how to reduce the model's number of hidden layers from many to just 1-2. If the layers aren't identical (e.g. some MoE models alternate 2 different block configurations) then ensure you include at least one variation of each. For the purpose of the following demonstrations we will use this MoE model [Qwen/Qwen3-30B-A3B-Instruct-2507](https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507). We have 48 hidden layers there as can be seen from its [config file](https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507/blob/main/config.json).
+Therefore in this section we will discuss how to reduce the model's number of hidden layers from many to just 1-2. If the layers aren't identical (e.g. some MoE models alternate between 2 different block configurations) then ensure you include at least one variation of each. For the purpose of the following demonstrations we will use this MoE model [Qwen/Qwen3-30B-A3B-Instruct-2507](https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507). We have 48 hidden layers there as can be seen from its [config file](https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507/blob/main/config.json).
 
 This model has 2 alternating types of Transformer blocks, so we need to keep at least 2 layers.
 
