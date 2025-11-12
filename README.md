@@ -17,7 +17,7 @@ Every so often someone I would be debugging some difficult problem with would su
 
 Writing about debugging in the void is very difficult and since I haven't been saving use cases, it will take some time to build this up, so expect these pages to be a Work In Progress (WIP) for many moons. But hopefully some ideas could be relayed to you sooner than later, and they would help to ease your burden of debugging in your professional and play projects.
 
-Besides debugging methodologies the second focus of this book is on sharing the best tools I have discovered to get the debugging job done successfully, while ideally losing the least amount of hair possible.
+Besides debugging methodologies the second focus of this book is on sharing the best tools I have discovered to get the debugging job done successfully, while ideally "losing the least amount of hair" in the process.
 
 
 ## Table of Contents
