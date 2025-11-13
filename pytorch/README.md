@@ -726,7 +726,7 @@ I edited the output to break the one liner into multiples to fit the width here.
 
 We don't yet have a way for Python to tell us the name of the variable that was passed to the function, hence we need to pass the variable name as a string. In Python 3.14 there is a way to overcome this:
 
-(XXX: what is the way?)
+(XXX: what is the way? https://peps.python.org/pep-0750/)
 
 Sometimes having too much data dumped can make the debugging process slower, so it's up to you how many attributes you want to dump while debugging.
 
