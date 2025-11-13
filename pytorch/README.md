@@ -551,6 +551,216 @@ Here we prevent `loss=NaN` situation and instead create an artifical loss `0`, w
 
 You can see it in context [here](https://github.com/deepspeedai/DeepSpeed/blob/df59f203f40c8a292dd019ae68c9e6c88f107026/deepspeed/runtime/sequence_parallel/ulysses_sp.py#L1184-L1186). Though the code has evolved since then, and you can find a more elaborate version [here](https://www.deepspeed.ai/tutorials/ulysses-alst-sequence-parallelism/#part-1-ulysses-sequence-parallelism-for-hf-transformers) in the loss calculation across sequence parallel ranks section.
 
+### Getting tensor attributes
+
+#### shape
+
+Probably the most useful property attribute during debug is `t.shape` since the most common error one is likely to see is:
+
+```bash
+$ python -c "import torch; x=torch.ones(2,3); y=x@x"
+[...]
+RuntimeError: mat1 and mat2 shapes cannot be multiplied (2x3 and 2x3)
+```
+So you'd look at the shapes of the tensors using: `print(x.shape)` and correct your code to do the right thing - e.g. you need to transpose the 2nd tensor in the silly example above:
+
+```bash
+$ python -c "import torch; x=torch.ones(2,3); y=x@x.T"
+```
+and the error is gone.
+
+To check the shape of the tensor, it's just `t.shape`:
+```bash
+$ python -c "import torch; x=torch.ones(2,3); print(x.shape)"
+torch.Size([2, 3])
+```
+
+It's also super handy for getting various model dimensions, you're often likely to see code like this:
+```
+batch_size, seqlen, hidden_size = hidden_states.shape
+batch_size = hidden_states.shape[0]
+```
+`t.shape` is the same as `t.size()`, except the latter is a callable and `t.size()[1]` is not as intuitive as `t.shape[1]`
+
+#### device
+
+Forgetting to move a tensor or a model to the right device results in the second most common error:
+
+```bash
+$ python -c "import torch; x=torch.ones(2,3); y=x.T.clone().cuda(); x@y"
+[...]
+RuntimeError: Expected all tensors to be on the same device, but got mat2 is on
+cuda:0, different from other tensors on cpu
+```
+
+Moving both devices to save device - `cuda` in this case solves the problem:
+```bash
+$ python -c "import torch; x=torch.ones(2,3); y=x.T.clone().cuda(); x=x.cuda(); x@y"
+```
+
+It's a good practice to create the device you want to work with ahead of time and then create all your tensors on that device. For example, to create a `device` variable on the first gpu and then to directly allocate a tensor on it:
+
+```python
+import torch
+device = torch.device(f"cuda:0")
+x = torch.ones(2,3, device=device)
+```
+
+To check the device of the tensor, it's just `t.device`:
+```bash
+$ python -c "import torch; x=torch.ones(2,3); print(x.device)"
+cpu
+```
+
+There are various devices depending on the hardware you use, `cpu` is always there, `meta` is a special device that requires no hardware and which uses no storage, but only stores the tensor metadata, `cuda` is for gpus, and there are many others.
+
+if there are multiple devices of the same type, they can be indexed in via the `:index` - for example, `cuda:2` - typically means the 3rd gpu (though `CUDA_VISIBLE_DEVICES` environment variable can alter the physical order of GPUs).
+
+Probably the most common line in ML code you have seen is:
+```
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+```
+which automatically picks the first gpu if it's available otherwise falls back to cpu.
+
+
+#### dtype
+
+The precision of the tensor is define via its `dtype` and the typical error involving it is:
+
+```bash
+$ python -c "import torch; x=torch.ones(2, dtype=torch.float16); \
+y=torch.ones(2, dtype=torch.bfloat16); x@y"
+[...]
+RuntimeError: dot : expected both vectors to have same dtype, but found Half and BFloat16
+```
+Here we have the first fp16 tensor can't be `matmul`'ed by second bf16 tensor. However, there is no problem with normal multiplication:
+
+```bash
+$ python -c "import torch; x=torch.ones(2, dtype=torch.float16); \
+y=torch.ones(2, dtype=torch.bfloat16); z=x*y; print(z.dtype)"
+torch.float32
+```
+I didn't actually know what the dtype of the outcome will be - surprisingly the outcome of fp16 multiplied by bf16 is fp32! And now you know how to discover the `dtype` of the tensor.
+
+To correct the first problem we need to have both tensors of the same `dtype`:
+
+```bash
+$ python -c "import torch; x=torch.ones(2, dtype=torch.float16); \
+y=torch.ones(2, dtype=torch.float16); x@y"
+```
+No error this time.
+
+### Dumping multiple tensor attributes
+
+When doing complex debugging often we need to dump multiple tensor attributes. Here the Python's self-declaring `f"{x=}` notation helps to make the code most maintainable/readable:
+
+```bash
+$ python -c "import torch; x=torch.ones(2, dtype=torch.float16); \
+print(f'x: {x.dtype=} {x.device=} {x.shape}')"
+x: x.dtype=torch.float16 x.device=device(type='cpu') torch.Size([2])
+```
+If you do this a lot and want a whole lot of tensor attributes using a helper debug utility can avoid a lot of typing. For example, these are the most common attributes that you might need while debugging PyTorch applications:
+
+```python
+def get_tensor_metadata(t, tensor_name=None, formatted=False):
+    """ dump useful tensor attributes
+        Args:
+        - `t`: tensor
+        - `tensor_name`: tensor name (Optional)
+        - `formatted`: whether to pretty format (by default just a space separated string)
+        Returns: string with passed tensor attributes
+    """
+    # a mix of callable and non-callable tensor attributes in the defined order
+    attrs = """
+        device
+        dtype
+        shape
+        numel
+        requires_grad
+        grad
+        stride
+        is_contiguous
+        data_ptr
+    """.split()
+
+    def get_attr_may_be_callable(t, attr):
+        a = getattr(t, attr)
+        return a() if callable(a) else a
+
+    txt = [f"{a}={get_attr_may_be_callable(t, a)}" for a in attrs]
+    if tensor_name is not None:
+        txt.insert(0, f"{tensor_name}:")
+    if formatted:
+        return "\n".join(txt)
+    else:
+        return ", ".join(txt)
+```
+
+Please note that some of these attributes are properties, while others are callables, therefore you'd use `t.shape`, but `t.numel()`.
+
+Now you can call it and see the many details about the tensor:
+```python
+x = torch.ones(2, dtype=torch.float16)
+print(get_tensor_metadata(x, "x", formatted=True))
+x:
+device=cpu             # device type
+dtype=torch.float16    # precision
+shape=torch.Size([2])  # shape
+numel=2                # how many elements in tensor
+requires_grad=False    # does it require gradients?
+grad=None              # the .grad field
+stride=(1,)            # the layout of data in the storage
+is_contiguous=True     # is the storage layout contiguous
+data_ptr=483278528     # a unique data pointer in the memory
+```
+I annotated each attribute in the output if you're not familiar with some of those attributes.
+
+If you do a lot of comparisons, a one liner format would be easier to work with - we just set `formatted=False` or remove it altogether as it's the default value:
+```
+print(get_tensor_metadata(x, "x"))
+x:, device=cpu, dtype=torch.float16, shape=torch.Size([2]), numel=2,
+requires_grad=False, grad=None, stride=(1,),
+is_contiguous=True, data_ptr=483278528
+```
+I edited the output to break the one liner into multiples to fit the width here.
+
+We don't yet have a way for Python to tell us the name of the variable that was passed to the function, hence we need to pass the variable name as a string. In Python 3.14 there is a way to overcome this:
+
+(XXX: what is the way?)
+
+Sometimes having too much data dumped can make the debugging process slower, so it's up to you how many attributes you want to dump while debugging.
+
+In some very complex situations you might want to dump all possible attributes. There is a secret private util that will do it for you:
+
+```bash
+$ python -c "import torch; x=torch.ones(2, dtype=torch.float16); \
+print(torch._subclasses.meta_utils.MetaTensorDescriber().describe_tensor(x))"
+MetaTensorDesc(id=0, ndim=1, dtype=torch.float16, device=device(type='cpu'),
+size=torch.Size([2]), dynamo_dynamic_indices=[], layout=torch.strided,
+is_inference=False, is_leaf=True, requires_grad=False, is_sparse=False,
+is_mkldnn=False, is_functorch_wrapped=False, is_batchedtensor=False,
+is_legacy_batchedtensor=False, is_gradtrackingtensor=False, is_view=False,
+is_nested=False, nested_int=None, is_traceable_wrapper_subclass=False,
+is_functional=False, is_conj=False, is_neg=False, is_parameter=False, stride=(1,),
+storage_offset=0, storage=MetaStorageDesc(id=0, size=4, data=None), sparse_dim=None,
+dense_dim=None, is_coalesced=None, crow_indices=None, col_indices=None,
+ccol_indices=None, row_indices=None, values=None, unwrapped=None, bdim=None,
+base=None, attrs=None, creation_meta=None, grad=None, ctx=None, type=None,
+fake_mode=None, view_func=_CustomViewFunc(func=<built-in method _view_func_unsafe of
+Tensor object at 0x100c30230>), level=None, current_level=None, functorch_stack=None,
+autograd_meta_from=None, data=None)
+```
+That's a lot of attributes! But it's missing attributes like `t.data_ptr` and probably others.
+
+Remember `torch.printoptions` from earlier? Another secret private attribute dumping approach is this context manager:
+
+```python
+with torch._tensor_str.printoptions(threshold=0, edgeitems=0): print(x)
+```
+prints: `tensor([...], size=(2,), dtype=torch.float16)`, since we told it to hide the payload, and it ends up only dumping the most common `shape/size` and `dtype` attributes.
+
+Now you know multiple ways of aiding your debug process introspecting tensor attributes.
+
 ## Fast debug of PyTorch models
 
 ### Reducing the number of layers for large models
