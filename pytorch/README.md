@@ -33,7 +33,7 @@ If you're on a multi-gpu setup you'd want to write a profile dump per rank to an
 rank = torch.distributed.get_rank() # assuming torch.dist has already been initialized
 torch.cuda.memory._dump_snapshot(f"/tmp/mem-{rank}.pickle")
 ```
-or just save one rank instead if everything is symmetical. The first time I missed this nuance and I was getting weird results, since I was hitting a race condition of different ranks writing to the same file, which looked non-corrupt when rendered but the outcome was a big mess.
+or just save one rank instead if everything is symmetrical. The first time I missed this nuance and I was getting weird results, since I was hitting a race condition of different ranks writing to the same file, which looked non-corrupt when rendered but the outcome was a big mess.
 
 For a largish code you would want to record as many memory allocation/free events as possible so I normally use a pretty large value like `max_entries=1e9` for the `_record_memory_history` call.
 
@@ -45,7 +45,7 @@ To get a feeling for what it looks like, here is an example of a memory profile 
 
 ![memory leak](images/torch-mem-profile-mem-leak.png)
 
-You can see those brown- and red-coloured continous horizonontal bars (I pointed to those with black arrows). On the very left edge of those bars are the moments that created 2 large tensors during a single layer's `forward`, but you can see those 2 unlike other colored bars continue all the way into the right edge. The exact same story happen in the next spike, which is just the subsequent layer's memory allocations when it runs its `forward` - and you can see the yellow and orange bars that demonstrate the same leak, because it doesn't get cleared. So each layer's `forward` here leaks a few MBs of memory, which quickly adds up. A very small model has been used here, so that the absolute leak size was small, but once switched to a real model those MBs become GBs and we quickly run out of memory.
+You can see those brown- and red-coloured continuous horizontal bars (I pointed to those with black arrows). On the very left edge of those bars are the moments that created 2 large tensors during a single layer's `forward`, but you can see those 2 unlike other colored bars continue all the way into the right edge. The exact same story happen in the next spike, which is just the subsequent layer's memory allocations when it runs its `forward` - and you can see the yellow and orange bars that demonstrate the same leak, because it doesn't get cleared. So each layer's `forward` here leaks a few MBs of memory, which quickly adds up. A very small model has been used here, so that the absolute leak size was small, but once switched to a real model those MBs become GBs and we quickly run out of memory.
 
 You can click on all those bars and the profiler will show you the traceback to the code that created the corresponding memory allocation. Since under the hood, PyTorch runs C++ CUDA code, unless you understand what happens there, it won't help you to understand the location of the leak in the code. But if you trace back up the trace into the python land, you will actually see references to functions that you'd be familiar with. For example, calls like `torch.zeros()`.
 
@@ -81,7 +81,7 @@ You want to make sure `pip install nvidia-ml-py` is run once, so that the report
 
 A critical nuance when tracing GPU memory usage is that if you released a python variable containing a tensor it doesn't necessarily mean the tensor gets immediately freed. Python's garbage collection is run on a schedule and thus it's critical to run `gc.collect()` after releasing critical large environment variables (while debugging!) and only then sampling memory usage, which is what this library does for you behind the scenes.
 
-Needless to say you will not want to use this library in production, since the overhead of frequent `gc.collect` calls and nvlm sampling adds a non-trivial runtime overhead. So remember to flip `force=True` to `force=False` and then you can leave the debug code in your production code if desired.
+Needless to say you will not want to use this library in production, since the overhead of frequent `gc.collect` calls and nvml sampling adds a non-trivial runtime overhead. So remember to flip `force=True` to `force=False` and then you can leave the debug code in your production code if desired.
 
 So let's run a little program that allocates a tensor, copies it to cpu, frees it on gpu and then frees the cpu copy.
 
@@ -128,14 +128,14 @@ Legend:
 - `NV`: current total memory usage like `nvidia-smi` report, which is almost always more than what's reported by torch.cuda (the `MA` column)
 - `CPU Virtual Memory`: CPU stats - RSS and percentage of total cpu memory
 
-Now that we know what each column stands for let's analyse the output of the program.
+Now that we know what each column stands for let's analyze the output of the program.
 
 ```
 [0] mp: before alloc
 [0] mp: MA 0.00 GB | Max_MA 0.00 GB | CA 0.00 GB | Max_CA 0.00 GB | NV 0.59 GB | CPU Virtual Memory:  used = 82.86 GB, percent = 4.1%
 ```
 
-If you look at the `NV` columnn you can see the gpu was already using 0.59GB of memory, even though no tensor has been allocated yet. This is because CUDA loads compute kernels the first time you call `import torch` - note that `torch.cuda` is not reporting that! all its columns are zeros.
+If you look at the `NV` column you can see the gpu was already using 0.59GB of memory, even though no tensor has been allocated yet. This is because CUDA loads compute kernels the first time you call `import torch` - note that `torch.cuda` is not reporting that! all its columns are zeros.
 
 Then we execute:
 ```
@@ -153,7 +153,7 @@ and the corresponding log around it is:
 [0] mp: after copy to cpu
 ```
 
-So we can that `MA` is half of `Max_MA` - because we had 2 tensors of the same size allocated and one of them freed. So the CUDA peak memory of 7.45GB is 2x larger than the the current CUDA memory usage. This is a very important momemnt. Often the software OOMs exactly during peak memory usage. For example, if some intermediary tensor isn't freed up fast enough it could cause OOM - and also see the earlier note about python garbage collection, there are rare situations where a well placed `gc.collect` call can save the day and prevent OOM.
+So we can that `MA` is half of `Max_MA` - because we had 2 tensors of the same size allocated and one of them freed. So the CUDA peak memory of 7.45GB is 2x larger than the the current CUDA memory usage. This is a very important moment. Often the software OOMs exactly during peak memory usage. For example, if some intermediary tensor isn't freed up fast enough it could cause OOM - and also see the earlier note about python garbage collection, there are rare situations where a well placed `gc.collect` call can save the day and prevent OOM.
 
 The `CA` and `MaxCA` columns report cached memory, I often find those not very useful for memory debug purposes, I sometimes even add:
 
@@ -182,13 +182,13 @@ which gives us:
 ```
 we see the `torch.cuda` and NV counters remain the same but CPU memory counters have gone up.
 
-Do note that the CPU mmeory report here isn't as informative as gpu memory reports, but what matters here is the delta wrt previous call.
+Do note that the CPU memory report here isn't as informative as gpu memory reports, but what matters here is the delta wrt previous call.
 
 When I want to debug just GPU memory I often remove the cpu memory reports altogether.
 
 One other thing to observe here is that `MA 3.73 GB | Max_MA 3.73 GB` - current and peak memory usage are the same, since there were no memory allocations or freeing on gpu at this step.
 
-Mext we delete our second tensor on CUDA:
+Next we delete our second tensor on CUDA:
 
 ```
 [0] mp: after copy to cpu
@@ -228,7 +228,7 @@ we would see:
 
 Note how the `CA` columns is now 0, `Max_CA` column is still non-zero because it was still reporting peak, if we call `see_memory_usage` yet another time, it'd go to 0 as well.
 
-But the interesting other number here is `NV 1.19 GB` which tells us that there was 1.2GB of memory allocated outside of the perview of `torch.cuda`. When I try to debug memory leaks that are inside PyTorch that when I enable `torch.cuda.empty_cache()` inside `see_memory_usage` because then it reports the delta for me and I don't need to do any math.
+But the interesting other number here is `NV 1.19 GB` which tells us that there was 1.2GB of memory allocated outside of the purview of `torch.cuda`. When I try to debug memory leaks that are inside PyTorch that when I enable `torch.cuda.empty_cache()` inside `see_memory_usage` because then it reports the delta for me and I don't need to do any math.
 
 You can't imagine how often I use this debug utility in my day-to-day work.  Every so often I sprinkle these calls around the strategic places I suspect and start mapping out block by block and then narrowing down to the suspect areas. Foe example, one useful use case is to run this report before `forward`, `backward` and `step` and observe if each training iteration leaks a bit of memory and where:
 
@@ -256,7 +256,7 @@ Once Resident cpu memory (RSS in `top`) hits the preset limit the program will g
 Killed
 ```
 
-which is very difficult to notice. This is typically performed by an `oom-kill` via [cgroups](https://docs.kernel.org/admin-guide/cgroup-v2.html). The `SIGKILL` is not trapable and there is no way to analyse what happens.
+which is very difficult to notice. This is typically performed by an `oom-kill` via [cgroups](https://docs.kernel.org/admin-guide/cgroup-v2.html). The `SIGKILL` is not trappable and there is no way to analyze what happens.
 
 note: Moreover in some situations, as in recent kubernetes implementations, the user gets kicked out from the job allocation, which makes it even more difficult to debug. [Kubernetes Silent Pod Killer](https://itnext.io/kubernetes-silent-pod-killer-104e7c8054d9). This k8s "feature" makes no sense to me.
 
@@ -312,7 +312,7 @@ What we want this time is this line:
 ```
         Maximum resident set size (kbytes): 640688
 ```
-This gives us the peak memory used by the program, which is the highest amount of CPU memory the program used at any given point of its run. So if you measured your program needing let's say 200GB of CPU RAM and then you try to run it elsewhere where you only have 132GB of CPU memory, it'll not work (most likely it will get kiled with [cpu-oom](#debugging-cpu-memory-oom) if cgroups are configured).
+This gives us the peak memory used by the program, which is the highest amount of CPU memory the program used at any given point of its run. So if you measured your program needing let's say 200GB of CPU RAM and then you try to run it elsewhere where you only have 132GB of CPU memory, it'll not work (most likely it will get killed with [cpu-oom](#debugging-cpu-memory-oom) if cgroups are configured).
 
 Note: when it comes to running out of CPU memory regardless of which memory usage reporting tool you use - typically what you want to track is the Resident Set Size metric, which is also known as RSS (e.g., it's one of the column names in the output of `top`). There are many other metrics, but those are usually not useful for this particular need.
 
@@ -373,7 +373,7 @@ If I'm not mistaken it only follows the immediate child process, and not further
 
 ##### cgmemtime
 
-[`cgmemtime`](https://github.com/gsauthof/cgmemtime) is a little gem of a C program that uses cgroups v2 to measure the peak memory usage of a process and all of its descendants no matter how many generations follow it. 
+[`cgmemtime`](https://github.com/gsauthof/cgmemtime) is a little gem of a C program that uses cgroups v2 to measure the peak CPU memory usage of a process and all of its descendants no matter how many generations follow it. 
 
 It's super easy to build:
 ```bash
@@ -516,9 +516,9 @@ We can see the needle now. Of course, you'd use that in much larger tensors and 
 
 The differences are high-lighted and are easy to see, especially when the real tensors are float numbers with many decimals.
 
-Granted, you don't need to set `set_printoptions(threshold=1e10)` for a 3x3 tensor, so try the above with 100x100. If you don't `set_printoptions(threshold=1e10)` and the needle entry ends up in what `torch` hides in `...` you will not find it. You can accomoplish something similar with `set_printoptions(profile="full")` as explained in the following paragraph.
+Granted, you don't need to set `set_printoptions(threshold=1e10)` for a 3x3 tensor, so try the above with 100x100. If you don't `set_printoptions(threshold=1e10)` and the needle entry ends up in what `torch` hides in `...` you will not find it. You can accomplish something similar with `set_printoptions(profile="full")` as explained in the following paragraph.
 
-For conventience, you also have the profiles that you can set via `profile` argument - for example, to get the full tensor set: `set_printoptions(profile="full")`. The 3 types of profile as of this writing are:
+For convenience, you also have the profiles that you can set via `profile` argument - for example, to get the full tensor set: `set_printoptions(profile="full")`. The 3 types of profile as of this writing are:
  - "default": what you normally get with 3 entries on each edge of the tensor, 4 decimal places for floats.
  - "short": 2 entries and 2 decimal places for floats.
  - "full": print all elements using scientific notation.
@@ -534,7 +534,7 @@ tensor([[0.01, 0.29,  ..., 0.02, 0.41],
         [0.21, 0.22,  ..., 0.37, 0.43]])
 ```
 
-Visual debuggers like VSCode or PyCharm are excellent at showing tensor's contents and are much easier to navigate and undestand than `pdb`, where you have to manually control the visualization. I would often step through to some breakpoint copy-n-paste the contents of a tensor before and after into 2 files and then run a comparison between the 2 to see the differences.
+Visual debuggers like VSCode or PyCharm are excellent at showing tensor's contents and are much easier to navigate and understand than `pdb`, where you have to manually control the visualization. I would often step through to some breakpoint copy-n-paste the contents of a tensor before and after into 2 files and then run a comparison between the 2 to see the differences.
 
 ### Detecting problematic tensor values
 
@@ -551,7 +551,7 @@ tensor(65504., dtype=torch.float16)
 $ python -c "import torch; print(torch.tensor(65504, dtype=torch.float16) + 50)"
 tensor(inf, dtype=torch.float16)
 ```
-The first tensor is fine, but the last one overflows when I added `50` to it and we get `inf`. If you remember back in the day, models were trained in fp16 mixed  precision regime and this `inf` happened a lot, thus a special scaler was used to move the numbers into the safe numerical range. And that's the reason why bf16 superceeded fp16, since while being less precise bf16's dynamic range is almost as big as that of fp32 despite it having only 16 bits vs. 32 bits for fp32.
+The first tensor is fine, but the last one overflows when I added `50` to it and we get `inf`. If you remember back in the day, models were trained in fp16 mixed  precision regime and this `inf` happened a lot, thus a special scaler was used to move the numbers into the safe numerical range. And that's the reason why bf16 superseded fp16, since while being less precise bf16's dynamic range is almost as big as that of fp32 despite it having only 16 bits vs. 32 bits for fp32.
 
 To create an `inf` value on demand:
 ```bash
@@ -601,7 +601,7 @@ if all((shift_labels == -100).squeeze()):
     loss = (logits.sum() * 0.0).float()
 ```
 
-Here we prevent `loss=NaN` situation and instead create an artifical loss `0`, which will also set all the grads to `0` in `backward` - the effect of this is akin to a perfect score where the model needs no adjustment since grads will be all zeros.
+Here we prevent `loss=NaN` situation and instead create an artificial loss `0`, which will also set all the grads to `0` in `backward` - the effect of this is akin to a perfect score where the model needs no adjustment since grads will be all zeros.
 
 You can see it in context [here](https://github.com/deepspeedai/DeepSpeed/blob/df59f203f40c8a292dd019ae68c9e6c88f107026/deepspeed/runtime/sequence_parallel/ulysses_sp.py#L1184-L1186). Though the code has evolved since then, and you can find a more elaborate version [here](https://www.deepspeed.ai/tutorials/ulysses-alst-sequence-parallelism/#part-1-ulysses-sequence-parallelism-for-hf-transformers) in the loss calculation across sequence parallel ranks section.
 
@@ -993,3 +993,40 @@ else:
         attn_weights = None
 ```
 and, of course, install `pip install einops` for the above code to work.
+
+## Measuring durations
+
+One of the key things we care about is in ML software is its speed. This is because when the program runs faster:
+- we need to spend less money on the hardware (even if you own the hardware, you still need to pay electricity to run it).
+- the program finishes faster - have you heard of the AI race? You can have the best idea for a new model but if the competitor's framework trains the model faster that yours your idea could become irrelevant by the time your software completes the training.
+
+Well, may be add bragging rights to the list above ;)
+
+The first need of making software faster is measuring various runtime durations, then optimizing, measuring again and hopefully getting some of those runtime durations shorter.
+
+### time
+
+So obviously the first tool to reach out is time.
+
+```bash
+$ python -c 'import time; start=time.time(); time.sleep(1); print(f"duration: {time.time()-start} secs")'
+duration: 1.0000815391540527 secs
+```
+The little one-liner took a snapshot of start time, then slept for 1 seconds and then took another time snapshot and reported the difference. That's all.
+
+As you may have noticed in the earlier sections of this chapter that there are different types of time.
+
+```bash
+$ time python -c 'import torch'
+real    0m0.943s
+user    0m0.837s
+sys     0m0.104s
+```
+Here:
+- `real` signifies the wall clock time - that is if you were to use a stop-watch - this the amount of elapsed time since you launched the program and it has finished its run
+- `user` is the amount of time the program spent performing calls in the user-space - that is your program
+- `sys` is the amount of time performing system calls (operating system / kernel level) - things like IO, networking, memory
+
+While in the above demo `user+sys` time (`.104+.837=0.941`) almost adds up to `real` time (`0.943`), very often it's not the case and `real` time can be both bigger and lower. If, for example, you're doing some very demanding compilation like building PyTorch using `make -j` to use all the cpu-cores, and at the same time you decide to run another program on the same system - the latter is likely to report a bigger `real` time and a smaller `user` plus `sys` time, because your program will be fighting with dozens of copies of `gcc` to get its share of a cpu time, spending a lot of time waiting. Slow or blocking IO (e.g. shared nfs filesystem) is another example of the same discrepancy. Usually if your software isn't competing with another software, then `real` is all one should care about. Analyzing `sys` + `user` is important for those who optimize the low level systems.
+
+
