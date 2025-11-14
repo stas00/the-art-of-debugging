@@ -195,7 +195,7 @@ And you can even force a core dump, by running either of these 2 commands (edit 
 gcore 107903
 kill -ABRT 107903
 ```
-this will also kill the program. This is again could be useful if the program is out of control and you want to make sure you saved the core file which you can analyse later, while freeing the resources.
+this will also kill the program. This is again could be useful if the program is out of control and you want to make sure you saved the core file which you can analyze later, while freeing the resources.
 
 footnote: `strace -p 107903` can be also useful for seeing where the process is stuck, but if it's some serious problem your `strace` could get stuck as well. For example, the latter problem can happen if a process tied to a GPU which stopped functioning and doesn't respond.
 
@@ -255,7 +255,7 @@ gdb python
 ```
 the difference here is that you need to pass the full path to the program.
 
-`gdb` is super powerful and can do many marvellous things but most of these are out of the scope of this basic introduction. It is very likely that if you understood everything covered so far you should be able to diagnose 95% of most problems you are likely to encounter.
+`gdb` is super powerful and can do many marvelous things but most of these are out of the scope of this basic introduction. It is very likely that if you understood everything covered so far you should be able to diagnose 95% of most problems you are likely to encounter.
 
 case study: [this issue](https://github.com/pytorch/pytorch/issues/46807#issuecomment-718452462) shows how gdb was used to get a backtrace on a crashing test.
 
