@@ -2,6 +2,10 @@
 
 Please ignore this file. This is just a dump of ideas that I'd like to expand on in the future
 
+## resources
+
+https://missing.csail.mit.edu/2020/debugging-profiling/
+
 
 ## misc topics
 
