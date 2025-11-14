@@ -264,9 +264,15 @@ In the world of ML, you're likely to encounter this issue if you're doing massiv
 
 #### Getting program's CPU peak memory usage
 
-One way was discussed in [Strategic memory allocation tracing](#strategic-memory-allocation-tracing) where you inject `see_memory_usage` during the program execution, but that's invasive and is not always easily doable, especially what if it's not a Python program that is causing the problem.
+One way was discussed in [Strategic memory allocation tracing](#strategic-memory-allocation-tracing) where you inject `see_memory_usage` during the program execution, but that's invasive and is not always easily doable, especially what if it's not a Python program that is causing the problem. Besides it doesn't tell you the actual CPU peak memory usage, only GPU peak memory usage.
 
-The other way that doesn't require code changes, or a full blown memory profiler, and can be applied to any program is `/usr/bin/time` - do not confuse this with bash-built-in `time` which only reports runtime stats. Let's run an example:
+So let's look at tools that report CPU peak memory usage, w/o needing to use full blown memory profiler.
+
+##### /usr/bin/time
+
+So the first program we look at is `/usr/bin/time`. Do not confuse it with the Bash's built-in `time`, which only reports runtime stats. Other shells beside Bash may have the built-in version as well. 
+
+Let's run an example:
 
 ```bash
 $ /usr/bin/time -v python -c "import torch"
@@ -295,7 +301,7 @@ $ /usr/bin/time -v python -c "import torch"
         Exit status: 0
 ```
 
-While you can see that it does provide the same measurements as bash's `time`:
+While you can see that it does provide the same measurements as Bash's `time`:
 ```
         User time (seconds): 8.12
         System time (seconds): 0.24
@@ -363,7 +369,55 @@ $ /usr/bin/time -f '%M' python -c "import torch"
 ```
 We get a very similar report with and without a sub-process.
 
-It probably won't measure child's peak memory usage if the child detaches from its parent.
+If I'm not mistaken it only follows the immediate child process, and not further, since if I use a launcher that calls another launcher which only then runs PyTorch processes I get a lot less memory reported. 
+
+##### cgmemtime
+
+[`cgmemtime`](https://github.com/gsauthof/cgmemtime) is a little gem of a C program that uses cgroups v2 to measure the peak memory usage of a process and all of its descendants no matter how many generations follow it. 
+
+It's super easy to build:
+```bash
+git clone https://github.com/gsauthof/cgmemtime
+cd cgmemtime
+make
+```
+Now copy the binary to some folder that in your `$PATH` (hint: run `echo $PATH` to see the options) and you can start using it.
+
+```bash
+$ cgmemtime python -c "import torch"
+
+user:   0.856 s
+sys:    0.101 s
+wall:   0.989 s
+child_RSS_high:     389572 KiB
+group_mem_high:     209240 KiB
+
+$ cgmemtime sh -c 'python -c "import torch" & wait'
+
+user:   0.875 s
+sys:    0.085 s
+wall:   0.961 s
+child_RSS_high:     389416 KiB
+group_mem_high:     206520 KiB
+```
+
+As you can see it reports both the time and the peak memory usage.
+
+Let's compare with `/usr/bin/time`:
+```
+$ /usr/bin/time -f '%M' sh -c 'python -c "import torch" & wait'
+389748
+```
+It's almost identical `389416` vs `389748` - as mentioned elsewhere Linux CPU memory reporting is a very fluid thing and you're very likely to get slightly different reporting running the same command.
+
+Note: Always recalibrate your tools before making comparisons. You will see different numbers in different sections of the book for the same commands since it's likely they were run at different times with different versions on different systems.
+
+As of this writing most Unix systems have moved to cgroups v2, but it's possible to still find some older distributions that use cgroups v1. If that's the case look at older versions of `cgmemtime` since originally it was written for cgroups v1.
+
+request: I'm yet to figure out how to make it work on a k8s pod, probably has something to do with the container not being configured properly to allow custom cgroups groups. If you know what needs to be done please share the solution.
+
+#####
+
 
 ## Debugging Tensors
 
