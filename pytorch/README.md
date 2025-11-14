@@ -782,7 +782,7 @@ We don't yet have a way for Python to tell us the name of the variable that was 
 
 (XXX: what is the way? https://peps.python.org/pep-0750/)
 
-Sometimes having too much data dumped can make the debugging process slower, so it's up to you how many attributes you want to dump while debugging.
+Sometimes having too much data dumped can make the debugging process slower, so it's up to you how many/which attributes you want to dump while debugging.
 
 In some very complex situations you might want to dump all possible attributes. There is a secret private util that will do it for you:
 
