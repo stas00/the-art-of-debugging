@@ -270,7 +270,7 @@ So let's look at tools that report CPU peak memory usage, w/o needing to use ful
 
 ##### /usr/bin/time
 
-So the first program we look at is `/usr/bin/time`. Do not confuse it with the Bash's built-in `time`, which only reports runtime stats. Other shells beside Bash may have the built-in version as well. 
+So the first program we look at is `/usr/bin/time`. Do not confuse it with the Bash's built-in `time`, which only reports runtime stats. Other shells beside Bash may have the built-in version as well.
 
 Let's run an example:
 
@@ -369,11 +369,11 @@ $ /usr/bin/time -f '%M' python -c "import torch"
 ```
 We get a very similar report with and without a sub-process.
 
-If I'm not mistaken it only follows the immediate child process, and not further, since if I use a launcher that calls another launcher which only then runs PyTorch processes I get a lot less memory reported. 
+If I'm not mistaken it only follows the immediate child process, and not further, since if I use a launcher that calls another launcher which only then runs PyTorch processes I get a lot less memory reported.
 
 ##### cgmemtime
 
-[`cgmemtime`](https://github.com/gsauthof/cgmemtime) is a little gem of a C program that uses cgroups v2 to measure the peak CPU memory usage of a process and all of its descendants no matter how many generations follow it. 
+[`cgmemtime`](https://github.com/gsauthof/cgmemtime) is a little gem of a C program that uses cgroups v2 to measure the peak CPU memory usage of a process and all of its descendants no matter how many generations follow it.
 
 It's super easy to build:
 ```bash
@@ -1030,3 +1030,46 @@ Here:
 While in the above demo `user+sys` time (`.104+.837=0.941`) almost adds up to `real` time (`0.943`), very often it's not the case and `real` time can be both bigger and lower. If, for example, you're doing some very demanding compilation like building PyTorch using `make -j` to use all the cpu-cores, and at the same time you decide to run another program on the same system - the latter is likely to report a bigger `real` time and a smaller `user` plus `sys` time, because your program will be fighting with dozens of copies of `gcc` to get its share of a cpu time, spending a lot of time waiting. Slow or blocking IO (e.g. shared nfs filesystem) is another example of the same discrepancy. Usually if your software isn't competing with another software, then `real` is all you should care about. Analyzing `sys` + `user` is important for those who optimize the low level systems.
 
 
+### Event-based durations
+
+When measuring code execution on GPUs (and another non-CPU devices), which always involves launching CUDA and similar kernels, using wall clock time won't give you the correct measurement, which means you won't be able to reliably optimize your kernels or code using those kernels. The correct way to do it precisely is to use events. In the following example we use CUDA events:
+
+```python
+import torch
+start_event = torch.cuda.Event(enable_timing=True)
+end_event   = torch.cuda.Event(enable_timing=True)
+x = torch.ones(2**10,2**10, device="cuda")
+start_event.record()
+x@x.T
+end_event.record()
+torch.cuda.synchronize()
+duration = start_event.elapsed_time(end_event) / 1000
+print(f"It took {duration} seconds to run this")
+```
+It will report:
+```
+It took 0.07701897430419923 seconds to run this
+```
+
+The code creates 2 CUDA event objects, then it creates a large tensor, starts recording on the first event, runs a huge matmul of that tensor with the transposed version of itself, records the end of the event, waits till any asyncronious events complete and then measures the duration of time between the two events. `start_event.elapsed_time(end_event)` can be called any time later. The important exact sequence/order is just these lines:
+
+```python
+start_event.record()
+<the code execution of which you want to time goes here>
+end_event.record()
+torch.cuda.synchronize()
+```
+
+If you're working with other devices, most of them have similar or identical API:
+
+- `torch.cuda.Event` - NVIDIA CUDA + AMD ROCm
+- `ht.hpu.Event(enable_timing)` - Intel Gaudi
+- `torch.xpu.Event(enable_timing)` - Intel dGPUs
+- Apple MPS has a different API, but we can emulate the same API as can seen in [mamf-finder.py](https://github.com/stas00/ml-engineering/blob/0099885db36a8f06556efe1faf552518852cb1e0/compute/accelerator/benchmarks/mamf-finder.py#L159).
+
+Here are good practical examples of measuring time durations with the help of device events:
+- [mamf-finder](https://github.com/stas00/ml-engineering/blob/master/compute/accelerator/benchmarks/mamf-finder.py)
+- [all_reduce_bench](https://github.com/stas00/ml-engineering/blob/master/network/benchmarks/all_reduce_bench.py)
+
+Here are some excellent articles going into deeper explanations and examples:
+- [How to Accurately Time CUDA Kernels in Pytorch](https://www.speechmatics.com/company/articles-and-news/timing-operations-in-pytorch)

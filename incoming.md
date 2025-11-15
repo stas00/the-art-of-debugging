@@ -2,6 +2,17 @@
 
 Please ignore this file. This is just a dump of ideas that I'd like to expand on in the future
 
+## python debug
+
+put this in the code
+```
+a = 5
+from IPython import embed; embed()
+print(a)
+```
+it acts somewhat like a limited version of pdb: it allows you to introspect and change variables, then when finished and exited with 
+Ctrl-D, it will continue running the program with modified variables.
+
 ## resources
 
 https://missing.csail.mit.edu/2020/debugging-profiling/
