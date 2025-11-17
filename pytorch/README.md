@@ -825,7 +825,7 @@ Given the nature of ML model architectures, they typically use a sequence of ide
 
 Therefore in this section we will discuss how to reduce the model's number of hidden layers from many to just 1-2. If the layers aren't identical (e.g. some MoE models alternate between 2 different block configurations) then ensure you include at least one variation of each. For the purpose of the following demonstrations we will use this MoE model [Qwen/Qwen3-30B-A3B-Instruct-2507](https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507). We have 48 hidden layers there as can be seen from its [config file](https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507/blob/main/config.json).
 
-This model has 2 alternating types of Transformer blocks, so we need to keep at least 2 layers.
+This model has 2 alternating types of Transformer blocks, so we need to keep at least 2 layers. (`Qwen/Qwen3-Next-80B-A3B-Instruct` uses a full attention block only once every 4 layers so there you'd need at least 4 layers.)
 
 The config entry that we want to change is [`num_hidden_layers`](https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507/blob/e67ac5d/config.json#L24)
 
@@ -833,9 +833,11 @@ Let's first run a quick test to demonstrate that even just the model loading tim
 
 ```bash
 git clone https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507
-time python -c 'import sys; from transformers import AutoModel; AutoModel.from_pretrained(sys.argv[1])' ./Qwen3-30B-A3B-Instruct-2507
+time python -c 'import sys; from transformers import AutoModelForCausalLM; \
+AutoModelForCausalLM.from_pretrained(sys.argv[1])' ./Qwen3-30B-A3B-Instruct-2507
 perl -pi -e 's|"num_hidden_layers": 48|"num_hidden_layers": 2|' Qwen3-30B-A3B-Instruct-2507/config.json
-time python -c 'import sys; from transformers import AutoModel; AutoModel.from_pretrained(sys.argv[1])' ./Qwen3-30B-A3B-Instruct-2507
+time python -c 'import sys; from transformers import AutoModelForCausalLM; \
+AutoModelForCausalLM.from_pretrained(sys.argv[1])' ./Qwen3-30B-A3B-Instruct-2507
 ```
 
 so here we clone the model locally and then measured how long it took to load the base model:
@@ -864,7 +866,8 @@ After finding the desired model on https://huggingface.co/, clone its git repo t
 ```bash
 git clone https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507
 perl -pi -e 's|"num_hidden_layers": 48|"num_hidden_layers": 2|' Qwen3-30B-A3B-Instruct-2507/config.json
-python -c 'import sys; from transformers import AutoModel; AutoModel.from_pretrained(sys.argv[1])' ./Qwen3-30B-A3B-Instruct-2507
+python -c 'import sys; from transformers import AutoModelForCausalLM; \
+AutoModelForCausalLM.from_pretrained(sys.argv[1])' ./Qwen3-30B-A3B-Instruct-2507
 ```
 Please make sure that you load the locally cloned version, that is:
 ```
@@ -877,10 +880,18 @@ This approach is useful since you don't need to change the user-end code.
 #### 2. editing the config object on the fly
 
 The other even simpler approach is to hack the config object on the fly. This requires no local cloning and is probably the easiest solution, though it requires modifying the end user code:
-```
-python -c 'import sys; from transformers import AutoModel, AutoConfig; \
+```bash
+python -c 'import sys; from transformers import AutoModelForCausalLM, AutoConfig; \
 c=AutoConfig.from_pretrained(sys.argv[1]); c.num_hidden_layers=2; \
-m=AutoModel.from_pretrained(sys.argv[1], config=c)' Qwen/Qwen3-30B-A3B-Instruct-2507
+m=AutoModelForCausalLM.from_pretrained(sys.argv[1], config=c)' Qwen/Qwen3-30B-A3B-Instruct-2507
+```
+
+And since you will end up with an incomplete model which will generate random outputs anyway, you can also save the overhead of loading the original model weights and just create the model on the fly like so:
+
+```bash
+python -c 'import sys; from transformers import AutoModelForCausalLM, AutoConfig; \
+c=AutoConfig.from_pretrained(sys.argv[1]); c.num_hidden_layers=2; \
+m=AutoModelForCausalLM.from_config(c)' Qwen/Qwen3-30B-A3B-Instruct-2507
 ```
 
 #### 3. hacking the architecture modeling code
