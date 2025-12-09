@@ -192,6 +192,10 @@ and in particular we narrow it down to this section:
 
 So now we know exactly where in the `forward` code there is an issue that gets triggered in the `backward` and now we can start working on fixing it.
 
+Besides using a context manager, you can also activate it globally somewhere before the training loop using `torch.autograd.set_detect_anomaly(True)`.
+
+Important: make sure to disable the anomaly detection mode before you put your work to real use because it will slow things down.
+
 ### Overcoming CUDA OOM due to memory fragmentation
 
 When developing [Arctic Long Sequence Training](https://arxiv.org/abs/2506.13996) a lot of the work involved hard (`contiguous`) reshaping of tensors for Sequence Parallelism, which lead to a very poor HBM utilization, because the reshapes lead to memory fragmentation.
