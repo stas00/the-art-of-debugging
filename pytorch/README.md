@@ -205,12 +205,13 @@ When developing [Arctic Long Sequence Training](https://arxiv.org/abs/2506.13996
 The solution was to use:
 
 ```bash
-export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+export PYTORCH_ALLOC_CONF=expandable_segments:True
 ```
 which made a dramatic positive impact to allowing for a much longer sequence length to be used w/o incurring a CUDA OOM event.
 
 In the particular case of this project I haven't observed any noticeable performance degradation, but if you use it do benchmark the performance w/ and w/o it to ensure it doesn't impact your workload's performance for the worse.
 
+footnote: the original env var name was `PYTORCH_CUDA_ALLOC_CONF`, but it got renamed in recent pytorch versions.
 
 ### PyTorch memory profiler
 
