@@ -194,6 +194,8 @@ So now we know exactly where in the `forward` code there is an issue that gets t
 
 Besides using a context manager, you can also activate it globally somewhere before the training loop using `torch.autograd.set_detect_anomaly(True)`.
 
+Additionally you can disable the `NaN` checker to make things a bit faster with: `torch.autograd.set_detect_anomaly(True, check_nan=False)`.
+
 Important: make sure to disable the anomaly detection mode before you put your work to real use because it will slow things down.
 
 ### Overcoming CUDA OOM due to memory fragmentation
