@@ -1,0 +1,172 @@
+/*
+  CSS style sheet for prince html2pdf system (http://www.princexml.com/)
+
+  Here's an example of how to use the style sheet:
+
+  prince --no-author-style -s prince_style.css http://en.wikipedia.org/wiki/Winter_war -o foo.pdf
+*/
+
+@import url(http://www.princexml.com/fonts/gentium/index.css);
+
+/* set headers and footers */
+
+@page {
+  size: letter;
+  margin: 2cm 2cm;
+  font: 11pt/1.3 "Gentium", serif;
+
+/*
+  @top-right {
+    content: string(title);
+    font-style: italic;
+  }
+  @top-left {
+    content: string(source);
+    font-style: italic;
+  }
+*/
+  @bottom-center {
+    content: counter(page);
+    vertical-align: top;
+    padding-top: 1em;
+  }
+
+  /* prince-shrink-to-fit: auto; */
+}
+
+/* #siteSub { string-set: source content() } */
+
+/* basic style settings*/
+
+body {
+  font: 10pt/1.3 "Gentium", serif;
+  prince-linebreak-magic: auto;
+  hyphens: none;
+  text-align: justify;
+}
+
+ul, ol, dl { text-align: left; hyphens: manual; }
+
+chapter {
+  page-break-before: always;
+  prince-bookmark-level: 1;
+  prince-bookmark-label: attr(title);
+}
+
+h1 { page-break-before: always; }
+
+h1, h2, h3, h4, h5, h6 {
+  line-height: 1.2;
+  padding: 0;
+  margin: 0.7em 0 0.2em;
+  font-weight: normal;
+  text-align: left;
+  page-break-after: avoid;
+  clear: both;
+}
+
+title { prince-bookmark-level: 1 }
+h1 { prince-bookmark-level: 1 }
+h2 { prince-bookmark-level: 2 }
+h3 { prince-bookmark-level: 3 }
+h4 { prince-bookmark-level: 4 }
+h5 { prince-bookmark-level: 5 }
+h6 { prince-bookmark-level: 6 }
+
+/* a { text-decoration: none; color: inherit; } */
+
+p {
+  padding: 4px 0;   /* top & bottom, right & left */
+  margin: 0;
+}
+
+/* blockquote p { */
+/*   font-size: 1em; */
+/*   font-style: italic; */
+/* } */
+
+blockquote {
+  background: #f9f9f9;
+  border-left: 10px solid #ccc;
+  margin: 1.5em 10px;
+  padding: 0.5em 10px;
+}
+blockquote p {
+  display: inline;
+}
+
+code {
+  font-family: Consolas, Menlo, Monaco, Lucida Console, Liberation Mono, DejaVu Sans Mono, Bitstream Vera Sans Mono, Courier New, monospace, serif;
+  font-size: 0.8em; /* seems to be similar in size to the non-monospace font */
+  background: #f9f9f9;
+}
+
+pre {
+  background: #f9f9f9;
+  margin: 1.5em 10px;
+  padding: 0.5em 10px;
+  white-space: pre-wrap; /* wrap long code sections to fit the page */
+  hyphens: none; /* do not hyphenate code sections */
+}
+
+ol, ul {
+  margin-top: 4px;
+  margin-bottom: 4px;
+  margin-left: 2em;
+}
+ul {  list-style-type: disc }
+
+
+/* put article heading on top of the page, spanning all columns */
+
+h1 {
+  string-set: title content();
+  padding-bottom: 0.2em;
+  border-bottom: thin solid black;
+  margin-bottom: 1em;
+}
+
+
+div {
+  max-width: 100%
+}
+
+/* images */
+
+/* this is important to fit huge images */
+img {
+  max-width: 650px;
+}
+
+tr, td, th {
+  margin: 0;
+/*  padding: 0.1em 0.2em; */
+  text-align: left;
+  vertical-align: top
+}
+
+div.center, th[align="center"] { text-align: center }
+
+/* tables */
+
+table {
+  width: auto;
+  border-collapse: collapse;
+  border-bottom: thin solid black;
+  margin: 1em 1em 2em 1em;
+}
+table, table td, table th {
+  border: solid black .1px;
+  padding: 0.4em;
+  text-align: left;
+}
+
+table th { background: #eee; font-weight: bold}
+
+/* hr { display: none } */
+
+sup { vertical-align: baseline }
+sup { vertical-align: top }
+
+/* fix ' characters */
+body { prince-text-replace: "'" "\2019" }
