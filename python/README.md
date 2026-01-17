@@ -219,3 +219,74 @@ pgrep -P $(pgrep -o python) | xargs -I {} py-spy dump --pid {}
 ```
 
 You can also read about how to run it on multiple nodes [here](https://github.com/stas00/ml-engineering/blob/master/debug/torch-distributed-hanging-solutions.md#py-spy).
+
+
+## Who is calling?
+
+Everybody knows that when a Python program crashes a stack trace (traceback) is printed and that's how we know where to fix things.
+
+But how do you go about discovering whether what you're working on gets actually called and don't get a false impression that everything works, when in reality it's just hasn't been called. A common use case of this is when dealing with multiple copies of the same code - e.g. multiple virtual environments or git repo clones. I use a quick and dirty solution. I add `die` to the code:
+
+```
+$ cat << EOT > test.py
+def a():
+    print("a was called")
+    die
+def b(): a()
+def c(): a()
+b()
+EOT
+
+$ python test.py
+```
+
+gives us:
+
+```
+a was called
+Traceback (most recent call last):
+  File "/test.py", line 6, in <module>
+    b()
+  File "/test.py", line 4, in b
+    def b(): a()
+             ^^^
+  File "/test.py", line 3, in a
+    die
+NameError: name 'die' is not defined. Did you mean: 'dir'?
+```
+
+So here we can immediately see that it was `b()` that called `a()` and the right `a()` was called (the one I was editing) and not in some other file or virtual environment.
+
+You could have used any other non-python command-like word as long as it doesn't break the syntax, because we want python to actually run the program.
+
+footnote: `die` comes from Perl, where it works like `assert` so I find it a good fit - but of course choose your own.
+
+`traceback.print_stack()` is another way to check the right code path was chosen or to discover the callers, since in complex code bases the same function can be called by very different code branches.
+
+
+```
+$ cat << EOT > test.py
+import traceback
+def a():
+    traceback.print_stack()
+    print("a was called")
+def b(): a()
+def c(): a()
+b()
+EOT
+
+$ python test.py
+```
+
+gives us:
+```
+python test.py
+  File "/test.py", line 7, in <module>
+    b()
+  File "/test.py", line 5, in b
+    def b(): a()
+  File "/test.py", line 3, in a
+    traceback.print_stack()
+a was called
+```
+So again, you can see that it was `b()` that called `a()`. But here the program continued running, which often is undesirable since if there are many logs it might be tricky to find the traceback's output. That's why my personal preference is the `die` solution above.
