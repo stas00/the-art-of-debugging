@@ -1,9 +1,61 @@
 # Debugging Python Programs
 
 
+## Print-based Debug Techniques And Tools
+
+### q
+
+It can be difficult to use `print` calls to debug a Python program that already prints a lot of messages to `stdout`, `stderr` and logger streams, which could make it difficult to see your custom debug print messages. The `q` package comes to rescue in this situation.
+
+This package, that can be installed from https://github.com/zestyping/q or `pip install q`, is designed for a quick code and function tracing. By default it sends its output into the `/tmp/q` file, so in one console start watching this file:
+
+```bash
+tail -F /tmp/q
+```
+
+Then in your code wrap code statements you want traced with `q()` and decorate functions with `@q`. Here is an example:
+
+```python
+# q1.py
+import q
+
+# trace any code and its outputs
+q(1+2)
+
+# to trace function arguments and returns add @q before each function definition
+@q
+def add(a,b): return a+b
+add(1, 2)
+```
+Let's run it:
+```bash
+python q1.py
+```
+
+Now you can ignore the normal std/logger streams and just watch `/tmp/q`:
+
+```bash
+$ cat /tmp/q
+
+ 0.0s <module>: 1+2=3
+ 0.0s add(1, 2)
+ 0.0s -> 3
+```
+
+It first showed the statement `1+2` and its outcome `3`, followed by a trace of a function with its arguments `1, 2` and the return value `3`.
+
+It gave us even a rough execution time information in the first column, but secs is too low of a resolution for this particular code example.
+
+Notes:
+- on MacOS before using this package you need to add:
+```bash
+export TMPDIR=/tmp/
+```
+in the console you run the python program from.
 
 
-## auto-print what's being observed
+
+### auto-print what's being observed
 
 Say, you want to see the output of summation:
 
