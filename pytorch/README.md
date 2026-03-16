@@ -213,6 +213,124 @@ In the particular case of this project I haven't observed any noticeable perform
 
 footnote: the original env var name was `PYTORCH_CUDA_ALLOC_CONF`, but it got renamed in recent pytorch versions.
 
+### Discovering how many GBs is allocatable before OOM for CPU and GPU
+
+Here are 2 simple one-liners that can tell you how much memory you can allocate on cpu and gpu. We will be using an H200 node with ~2TB of CPU RAM and GPUs of 144GB of HBM memory.
+
+On CPU:
+
+```bash
+$ python -c 'import torch; [(torch.ones((1024*2**18)), print(c)) for c in range(2000)]'
+0
+1
+2
+[...]
+1996
+1997
+Killed
+```
+This one liner tried to allocate 2TB of memory, 1 GiB at a time, reporting each successful incremental allocation. We can see the program incurred cpu-oom after successfully allocating around 1997GiB.
+
+If your admin set `cgroups` to cpu oom individual programs when a collective amount of cpu memory used by a given user reaches a specific size,  this is how you can discover what that value is. For example, on a shared 8-GPU node with 2TB of CPU RAM, and you asked for just 1x GPU - you will likely get 1/8th of node's total resources - thus any of your processes may get killed via cpu-oom at 250GB (`2000/8`), even though `top` shows you all of 2TB available.
+
+Now let's do the same test on GPU (after moving tensors to `cuda` device):
+
+```bash
+$ python -c 'import torch; [(torch.ones((1024*2**18)).cuda().contiguous(), print(c)) for c in range(200)]'
+0
+1
+2
+3
+[...]
+137
+138
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 1024.00 MiB.
+GPU 0 has a total capacity of 139.80 GiB of which 289.25 MiB is free. [...]]
+```
+
+Indeed, H200 is about 140GiB, so this checks out. You might wonder what's the point of this. This discovery code is useful when you have to deal with multiple systems accessing the same GPU - e.g. VLLM and VeRL sharing the same GPUs and PyTorch memory usage counters [are completely wrong](https://github.com/vllm-project/vllm/issues/33625), or if you want to emulate a smaller GPU memory while using a larger GPU (use case: you have to make your hparams fit into H200 but you lost access to it and you have a larger B300 GPU - just use up that many GiB and now your B300 is like H200 memory-size-wise)
+
+Both of these one-liners will be useful in the investigation process of following section.
+
+### Overcoming the coherent memory uncertain behavior
+
+The introduction of coherent/unified memory in recent NVIDIA products like DGX Station, Spark, GH200, GB300 makes it for a very confusing accounting, hard to understand memory usage patterns and unstable behavior.
+
+For example, with DGX Spark, you can't even get a memory reading from the GPU side - `nvidia-smi` will not report memory use and will say `Not Supported` and `pynvml.nvmlDeviceGetMemoryInfo()` will assert. Here you never know if a CPU RAM using program is going to steal memory from a GPU program and OOM it (or vice versa). The same GPU workload may work at one time and OOM at another depending on what's running on the CPU side.
+
+At least in my latest experiments with DGX Station here is what appears to be true. With the default settings Linux may borrow from the GPU HBM memory if it runs out of its LPDDR5 memory, but not the other way around - since PyTorch doesn't implement borrowing from CPU RAM as of this writing.
+
+We will use the 2 one-liners from the previous section to see what's possible here. We will be using a DGX Station with 277GiB of GPU HBM memory and 496GiB of LPDDR5 CPU RAM - the total for the coherent memory reported by `top` is about 770GiB.
+
+On CPU:
+
+```bash
+python -c 'import torch; [(torch.ones((1024*2**18)), print(c)) for c in range(900)]'
+```
+This program will try to allocate 900GiB of memory, one GiB at a time, reporting each successful incremental allocation. So on DGX Station when GPU is not used we get:
+```bash
+$ python -c 'import torch; [(torch.ones((1024*2**18)), print(c)) for c in range(900)]'
+0
+1
+2
+3
+...
+748
+749
+750
+Killed
+```
+The program CPU OOMed at ~750GiB, since some 20GiB were used by system programs. So now we know if nothing else runs we can use all of the coherent memory - once the CPU RAM is fully consumed it'll start using GPU's HBM memory. (However note that `nvidia-smi` / NVML will not report this usage!)
+
+Now let's check how much can we allocate on GPU:
+```bash
+$ python -c 'import torch; [(torch.ones((1024*2**18)).cuda().contiguous(), print(c)) for c in range(500)]'
+0
+1
+2
+3
+[...]
+272
+273
+274
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 1024.00 MiB.
+GPU 0 has a total capacity of 276.50 GiB of which 797.44 MiB is free. [...]]
+```
+
+OK, so we can see PyTorch (at least of this writing) won't reach into CPU RAM and has a hard stop at the size of HBM.
+
+case study: As I was trying to figure out the maximum sequence length I could do post-training with on DGX Station with Qwen3-32B model, I can getting alternating CPU-OOM and GPU-OOM events. The reason was that I was offloading optimizer states to CPU RAM since there wasn't enough HBM memory to hold the weights and optimizer states on a single GB300 GPU, but since there isn't that much CPU RAM either, Linux was reaching into the GPU "cookie jar" and stealing GPU memory. It was a very unsettling experience since I had to run dozens of experiments, most of them leading to one or the other OOM, why? because depending on what CPU-side processes were running (think various Linux daemons and user programs) there would be a different amount of CPU RAM available at different times and the behavior would become unpredictable.
+
+The solution: to prevent CPU from stealing GPU memory switch to the CDMM mode (from the default NUMA mode), as explained in a paper linked from [this post](https://developer.nvidia.com/blog/understanding-memory-management-on-hardware-coherent-platforms/) by running:
+```bash
+$ echo options nvidia NVreg_CoherentGPUMemoryMode=driver | sudo tee /etc/modprobe.d/nvidia-openrm.conf
+```
+and rebooting. When the system is back test it's set correctly:
+```bash
+$ grep Coherent /proc/driver/nvidia/params
+CoherentGPUMemoryMode: "driver"
+```
+If it's not "driver" then it didn't work.
+
+Voila, now you're back into the reliable and predictable "CPU memory is CPU memory, GPU memory is GPU memory" world. No weird surprises and various memory counters reflect reality.
+
+If you rerun the first one-liner after switching to the CDMM mode, you will now see:
+```bash
+$ python -c 'import torch; [(torch.ones((1024*2**18)), print(c)) for c in range(900)]'
+0
+1
+...
+475
+Killed
+```
+Since there is only 496GiB of LPDDR5 and some 20GiB are used by system processes we can now clearly see that CPU wasn't allowed to reach into GPU memory (I wasn't using GPU while running this test - its memory was fully available.) If you remember originally since one-liner reported process cpu-oomed at 750GiB.
+
+In the case of DGX Spark where it's only 120GB of LPDDR5 memory, shared between CPU and GPU and 0 HBM memory, ideally the developer should be able to assign how much of the memory should go to GPU and to CPU - e.g. 80 and 40 correspondingly - that way the developer can reliably plan their workload and avoid programs crashing. I communicated this need to the NVIDIA team, let's see if they will come back with a solution to us.
+
 ### PyTorch memory profiler
 
 PyTorch memory profiler is quite easy to use. It requires 2 stages.
