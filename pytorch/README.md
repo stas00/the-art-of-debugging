@@ -983,6 +983,81 @@ torch.Size([2, 3])
 
 You can tweak it further to dump other tensor attributes of your choice.
 
+#### lovely-tensors
+
+There is also the [lovely-tensors](https://github.com/xl0/lovely-tensors/) library that is designed to automate the process of making the tensor dump more useful and provide shapes, statistics, nan/inf counts, tensor memory usage, etc.
+
+```bash
+pip install lovely-tensors
+```
+
+```python
+import lovely_tensors as lt
+lt.monkey_patch()
+t = torch.rand((2,3))
+print(t)
+```
+
+prints:
+```
+tensor[2, 3] n=6 x∈[0.295, 0.897] μ=0.512 σ=0.229 [[0.651, 0.897, 0.295], [0.446, 0.310, 0.472]]
+```
+
+It prints the shape, number of elements, various statistics and a short snippet of values. In this example the tensor is very small so it printed out all values.
+
+It flags `inf`s and `nan`s:
+```python
+import lovely_tensors as lt
+lt.monkey_patch()
+t = torch.rand((1024,1024))
+t[100,100] = float('inf')
+t[100,101] = float('nan')
+print(t)
+```
+prints:
+```
+tensor[1024, 1024] n=1048576 (4Mb) x∈[2.980e-07 |██████▇███| 1.000] μ=0.500 σ=0.288 +Inf! NaN!
+```
+So the output contains `+Inf! NaN!`. Also here the tensor is big enough and it prints the size of the tensor 4Mb.
+
+note: I think it doesn't report the correct size, it should be 4MiB (`1024*1024*4/2**20=4`) (Byte, not bit and `Mi` instead of `M`) (`4` is for `4` fp32 bytes).
+
+If you want the original tensor dump in addition to the other attributes, use `t.v`:
+
+```python
+print(t.v)
+```
+gives:
+```
+tensor[1024, 1024] n=1048576 (4Mb) x∈[2.980e-07 |██████▇███| 1.000] μ=0.500 σ=0.288 +Inf! NaN!
+tensor([[0.8077, 0.8768, 0.7949,  ..., 0.4144, 0.2792, 0.6595],
+        [0.1443, 0.7482, 0.0300,  ..., 0.6591, 0.1642, 0.2081],
+        [0.2470, 0.1187, 0.4105,  ..., 0.3548, 0.8849, 0.3677],
+        ...,
+        [0.8501, 0.3632, 0.5207,  ..., 0.7146, 0.2554, 0.6134],
+        [0.3375, 0.6647, 0.5794,  ..., 0.2235, 0.3606, 0.7333],
+        [0.3291, 0.9476, 0.3935,  ..., 0.9475, 0.6077, 0.5302]])
+```
+
+If the tensor has `t.grad is not None` it'll also print useful stats about the grad in the output:
+
+```python
+import lovely_tensors as lt
+lt.monkey_patch()
+t = torch.rand((2,2), requires_grad=True)
+print(t)
+y = t.sum().backward()
+print(t)
+```
+so we get grad stats as well:
+```
+tensor[2, 2] n=4 x∈[0.184, 0.831] μ=0.500 σ=0.353 grad=None [[0.779, 0.184], [0.207, 0.831]]
+tensor[2, 2] n=4 x∈[0.184, 0.831] μ=0.500 σ=0.353 grad={ x∈[1.000, 1.000] μ=1.000 σ=0. } [[0.779, 0.184], [0.207, 0.831]]
+```
+
+It has a lot of functionality for working with image tensors as well.
+
+
 ### Detecting problematic tensor values
 
 #### Inf
