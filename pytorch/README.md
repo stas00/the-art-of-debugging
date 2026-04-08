@@ -917,7 +917,71 @@ $ python -c "import torch, rich; t = torch.rand(2,3); rich.inspect(t)"
 ```
 This allows you to quickly peek inside the tensor object. Except there might be too much information.
 
+### Auto-dumping desired tensor attributes
 
+Say, you have been using `print` to dump tensor's contents at strategic places in the code.
+
+```python
+print(t)
+```
+
+Now you have run into the most common issue of PyTorch complaining about mismatching tensor shapes in some operation. Well, you could go and change the tensor dumps to either print the shape: `print(t.shape)` or add an additional print:
+
+```python
+print(t)
+print(t.shape)
+```
+but that's a lot of work.
+
+When you do:
+```python
+t = torch.rand((2,3))
+print(t)
+```
+behind the scenes, `tensor.Torch.__repr__` is called - which is a special method python calls on an object if it's available before printing a custom representation of the object. This prints:
+```
+tensor([[0.6220, 0.7673, 0.9156],
+        [0.8413, 0.4410, 0.9822]])
+```
+
+Why not change `__repr__` to do what we want instead. On top of python module we can add:
+
+```python
+import torch
+torch.Tensor.__repr_orig__ = torch.Tensor.__repr__
+torch.Tensor.__repr__ = lambda t: f"{t.shape} {torch.Tensor.__repr_orig__(t)}"
+```
+
+Now this code:
+```python
+t = torch.rand((2,3))
+print(t)
+```
+prints both the shape and the contents of the tensor:
+```
+torch.Size([2, 3]) tensor([[0.6220, 0.7673, 0.9156],
+        [0.8413, 0.4410, 0.9822]])
+```
+
+If all your care about is the shape, then this will do the trick:
+
+```python
+import torch
+torch.Tensor.__repr_orig__ = torch.Tensor.__repr__
+torch.Tensor.__repr__ = lambda t: f"{t.shape}"
+```
+
+Now this code:
+```python
+t = torch.rand((2,3))
+print(t)
+```
+prints just the tensor's shape:
+```
+torch.Size([2, 3])
+```
+
+You can tweak it further to dump other tensor attributes of your choice.
 
 ### Detecting problematic tensor values
 
