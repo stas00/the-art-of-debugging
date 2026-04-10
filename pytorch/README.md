@@ -1296,11 +1296,9 @@ print(t)
 ```
 prints:
 ```
-tensor[1024, 1024] n=1048576 (4Mb) x∈[2.980e-07 |██████▇███| 1.000] μ=0.500 σ=0.288 +Inf! NaN!
+tensor[1024, 1024] n=1048576 (4MiB) x∈[2.980e-07 |██████▇███| 1.000] μ=0.500 σ=0.288 +Inf! NaN!
 ```
-So the output contains `+Inf! NaN!`. Also here the tensor is big enough and it prints the size of the tensor 4Mb.
-
-note: I think it doesn't report the correct size, it should be 4MiB (`1024*1024*4/2**20=4`) (Byte, not bit and `Mi` instead of `M`) (`4` is for `4` fp32 bytes).
+So the output contains `+Inf! NaN!`. Also here the tensor is big enough and it prints the size of the tensor 4MiB.
 
 If you want the original tensor dump in addition to the other attributes, use `t.v`:
 
@@ -1309,7 +1307,7 @@ print(t.v)
 ```
 gives:
 ```
-tensor[1024, 1024] n=1048576 (4Mb) x∈[2.980e-07 |██████▇███| 1.000] μ=0.500 σ=0.288 +Inf! NaN!
+tensor[1024, 1024] n=1048576 (4MiB) x∈[2.980e-07 |██████▇███| 1.000] μ=0.500 σ=0.288 +Inf! NaN!
 tensor([[0.8077, 0.8768, 0.7949,  ..., 0.4144, 0.2792, 0.6595],
         [0.1443, 0.7482, 0.0300,  ..., 0.6591, 0.1642, 0.2081],
         [0.2470, 0.1187, 0.4105,  ..., 0.3548, 0.8849, 0.3677],
