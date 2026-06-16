@@ -473,3 +473,333 @@ python test.py
 a was called
 ```
 So again, you can see that it was `b()` that called `a()`. But here the program continued running, which often is undesirable since if there are many logs it might be tricky to find the traceback's output. That's why my personal preference is the `die` solution above.
+
+
+## Profilers
+
+When a program runs slower than desired, or if the compute is expensive, often it's possible to rewrite parts of the program to make it faster. For example, if some function is run in a loop, repeating hundreds of thousands of times speeding it up just a little bit can make the total runtime much faster. Very often 20% of the code contributes to 80% of execution time, so finding that code and optimizing it should improve the performance. It also helps to understand where it's worthwhile to invest the optimization efforts.
+
+Let's look at some of the useful Python profilers.
+
+### cProfile
+
+cProfile is a built-in profiler that is quite easy to use. The full documentation is [here](https://docs.python.org/3/library/profile.html).
+
+#### Command line
+
+The simplest way of trying it out is to run your existing program with `-m cProfile`. Assuming the program is:
+
+```python
+# sleep.py
+import time
+def run():
+    for _ in range(3):
+        time.sleep(0.1)
+run()
+```
+
+We can now run:
+```bash
+$ python -m cProfile sleep.py
+         7 function calls in 0.300 seconds
+
+   Ordered by: cumulative time
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.300    0.300 {built-in method builtins.exec}
+        1    0.000    0.000    0.300    0.300 sleep.py:1(<module>)
+        1    0.000    0.000    0.300    0.300 sleep.py:2(run)
+        3    0.300    0.100    0.300    0.100 {built-in method time.sleep}
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+```
+
+What can we learn from the output of the profiler:
+- `time.sleep` was called 3 times, for a total of 0.3sec, each call being 0.1sec
+- `run` was called once, and close to zero time was spent in the function itself (`tottime`) but cumulatively 0.3sec passed
+
+When running a real program it's often important to sort the output. The default sorting is by cumulative time but you can sort by any column name from the output above with the help of the `-n` argument. For example, `-n calls` will sort by `ncalls` (the number of calls). Let's validate:
+
+```bash
+$ python -m cProfile -s ncalls sleep.py
+         7 function calls in 0.300 seconds
+
+   Ordered by: call count
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        3    0.300    0.100    0.300    0.100 {built-in method time.sleep}
+        1    0.000    0.000    0.300    0.300 {built-in method builtins.exec}
+        1    0.000    0.000    0.300    0.300 sleep.py:2(run)
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+        1    0.000    0.000    0.300    0.300 sleep.py:1(<module>)
+```
+
+And it is so.
+
+#### cProfile Context manager
+
+Profiling a whole big program is often ineffective as you may have too many things to sort through. If you already know which code segment you want to profile, it's best to profile just it. Let's see how we can use `cProfile.Profile()` as a context manager:
+
+```python
+# sleep2.py
+import time
+import cProfile
+from pstats import SortKey
+with cProfile.Profile() as pr:
+    for _ in range(3):
+        time.sleep(0.1)
+pr.print_stats(SortKey.CUMULATIVE)
+```
+
+Now we run the program normally, without passing `-m cProfile` at the command line:
+```bash
+$ python sleep2.py
+         5 function calls in 0.301 seconds
+
+   Ordered by: cumulative time
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        3    0.301    0.100    0.301    0.100 {built-in method time.sleep}
+        1    0.000    0.000    0.000    0.000 cProfile.py:119(__exit__)
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+```
+
+The only argument to `pr.print_stats` is how you want the output to be sorted, the example above uses `SortKey.CUMULATIVE` - cumulative time, `SortKey` is an `enum` variable, with other commonly useful values are `SortKey.TIME` (total time) and `SortKey.CALLS` (number of calls). To dump all the available values run `[c.name for c in SortKey]` or read the [doc](https://docs.python.org/3/library/profile.html#pstats.Stats.sort_stats).
+
+The previous ways will dump all function calls and if your program has hundreds of those it might be too many, so here is how to control the length of the output:
+
+```python
+# sleep3.py
+import time
+import cProfile
+from pstats import Stats
+def run():
+    for _ in range(3):
+        time.sleep(0.1)
+with cProfile.Profile() as pr:
+    run()
+stats = Stats(pr)
+stats.sort_stats('tottime').print_stats(2)
+stats.sort_stats('cumulative').print_stats(4)
+```
+
+Let's run:
+
+```bash
+$ python sleep3.py
+         6 function calls in 0.300 seconds
+
+   Ordered by: internal time
+   List reduced from 4 to 2 due to restriction <2>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        3    0.300    0.100    0.300    0.100 {built-in method time.sleep}
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+
+
+         6 function calls in 0.300 seconds
+
+   Ordered by: cumulative time
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.300    0.300 /code/users/stas/github/sf/arctic-verl/sleep3.py:5(run)
+        3    0.300    0.100    0.300    0.100 {built-in method time.sleep}
+        1    0.000    0.000    0.000    0.000 /home/yak/miniconda3/envs/dev/lib/python3.12/cProfile.py:119(__exit__)
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+
+```
+
+This example shows that you can print multiple reports from the same profiler context manager object. Here we print the 2 top lines sorted by total time and 4 top lines sorted by cumulative time.
+
+Cumulative time is useful to understand where some of the large internal time overheads come from - because it shows you the stack of calls leading to the slow call. So `tottime` shows candidates to study and `cumulative` for finding context for those calls. So I often print some 10-20 lines sorted by total time and then immediately a bit longer report with cumulative sorting (I make it as long as needed to catch the function of interest).
+
+The argument to `stats.sort_stats` could be a string name or the `SortKey` enum like in the previous example. The complete table of options is [here](https://docs.python.org/3/library/profile.html#pstats.Stats.sort_stats).
+
+#### cProfile Runner
+
+Instead of the context manager you can also use cProfile's runner. This is useful when you have a few versions of functions to compare. For example, let's compare the built-in `**` vs `math.pow`:
+
+```python
+# power.py
+import cProfile
+from pstats import SortKey
+import math
+def way1():
+    for i in range(1000000): x = i**2
+def way2():
+    for i in range(1000000): x = math.pow(i, 2)
+cProfile.run("way1()", sort=SortKey.TIME)
+cProfile.run("way2()", sort=SortKey.TIME)
+```
+Now we run:
+```bash
+$ python power.py
+         4 function calls in 0.026 seconds
+
+   Ordered by: internal time
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.026    0.026    0.026    0.026 power.py:4(way1)
+        1    0.000    0.000    0.026    0.026 {built-in method builtins.exec}
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+        1    0.000    0.000    0.026    0.026 <string>:1(<module>)
+
+
+         1000004 function calls in 0.169 seconds
+
+   Ordered by: internal time
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+  1000000    0.093    0.000    0.093    0.000 {built-in method math.pow}
+        1    0.076    0.076    0.169    0.169 power.py:6(way2)
+        1    0.000    0.000    0.169    0.169 {built-in method builtins.exec}
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+        1    0.000    0.000    0.169    0.169 <string>:1(<module>)
+```
+We can see that the built-in `**` is several times faster than `math.pow` - at least for the given use-case.
+
+If you want to save the output of each profiler to a file instead of printing to `stdout` pass the filename as the 2nd argument:
+``` python
+cProfile.run("way2()", "cprofile.results", sort=SortKey.TIME)
+```
+Now when executed the output will be dumped into `cprofile.results`.
+
+Finally, if a function is local cProfile can't see it, so you need to switch to `cProfile.runctx` from `cProfile.run` and pass `locals()` as the third argument:
+```
+cProfile.runctx('way1()', None, locals(), sort=-1)
+```
+
+The definition of `runctx` is:
+```
+cProfile.runctx(command, globals, locals, filename=None, ...)
+```
+so you can pass `globals` as well.
+
+
+#### Increasing timing resolution
+
+As you can see the default time resolution is too low, often when working with very fast compute we need higher resolution. `cProfile` doesn't provide a way to change it, but one can hack around it. This monkey patch will increase the resolution to 6 decimals (i.e. report microsecond resolution)
+
+```python
+import pstats; pstats.f8 = lambda x: f"{x:3.6f}"
+```
+
+In context:
+
+```python
+# sleep4.py
+import time
+import cProfile
+import pstats
+pstats.f8 = lambda x: f"{x:3.6f}"
+def run():
+    for _ in range(3):
+        time.sleep(0.1)
+with cProfile.Profile() as pr:
+    run()
+pr.print_stats()
+```
+
+Run:
+
+```bash
+$ python sleep4.py
+         6 function calls in 0.300 seconds
+
+   Ordered by: standard name
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1 0.000019 0.000019 0.000040 0.000040 cProfile.py:119(__exit__)
+        1 0.000013 0.000013 0.300410 0.300410 sleep4.py:5(run)
+        3 0.300397 0.100132 0.300397 0.100132 {built-in method time.sleep}
+        1 0.000021 0.000021 0.000021 0.000021 {method 'disable' of '_lsprof.Profiler' objects}
+```
+
+In the first example we have seen this in the report, which told us nothing about the actual run time of `run`:
+
+```
+      ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+           1    0.000    0.000    0.300    0.300 sleep.py:2(run)
+```
+but now we see it took 13msecs:
+```
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1 0.000013 0.000013 0.300410 0.300410 sleep4.py:5(run)
+```
+
+### line_profiler
+
+`line_profiler` is a third-party Python profiler similar to cProfile, but instead of profiling function calls it profiles lines of code, which in some situations might be more practical.
+
+First install it:
+```bash
+pip install line_profiler
+```
+
+Now let's port our `power.py` example from [the cProfile example](#cprofile-runner):
+
+```python
+# power2.py
+import math
+def way1():
+    for i in range(1000000):
+        x = i**2
+def way2():
+    for i in range(1000000):
+        x = math.pow(i, 2)
+profile(way1)()
+profile(way2)()
+```
+Please note we aren't importing `profile` - the special launcher `kernprof` will take care of it:
+
+```bash
+$ kernprof -l -v power2.py
+Wrote profile results to 'power2.py.lprof'
+Timer unit: 1e-06 s
+
+Total time: 0.334813 s
+File: power2.py
+Function: way1 at line 2
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+     2                                           def way1():
+     3   1000001     164213.1      0.2     49.0      for i in range(1000000):
+     4   1000000     170599.7      0.2     51.0          x = i**2
+
+Total time: 0.361192 s
+File: power2.py
+Function: way2 at line 5
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+     5                                           def way2():
+     6   1000001     166696.8      0.2     46.2      for i in range(1000000):
+     7   1000000     194495.1      0.2     53.8          x = math.pow(i, 2)
+```
+
+As you can see it now reports timing per each line of code.
+
+Contrary to the cProfile example this gives us an inconclusive result, probably because the profiling overhead was too big here. So let's get a 3rd opinion and use `timeit`:
+
+```python
+# power3.py
+import timeit
+import math
+def way1():
+    for i in range(1000000): x = i**2
+def way2():
+    for i in range(1000000): x = math.pow(i, 2)
+print(f'way1={timeit.Timer("way1()", globals=globals()).timeit(number=1)}')
+print(f'way2={timeit.Timer("way2()", globals=globals()).timeit(number=1)}')
+```
+
+```bash
+$ python power3.py
+way1=0.031605484895408154
+way2=0.06159617658704519
+```
+
+Which gives us yet another outcome, here `math.pow` is only about 2x slower than `**`. I suppose mixing profiling
+
+One thing to observe here is that 3 different measurement approaches give very different results. Since the optimization work is newer versions relative to previous versions performance, it probably doesn't matter as long as you consistently use the same method.
+
