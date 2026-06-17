@@ -1607,3 +1607,283 @@ Here are good practical examples of measuring time durations with the help of de
 
 Here are some excellent articles going into deeper explanations and examples:
 - [How to Accurately Time CUDA Kernels in Pytorch](https://www.speechmatics.com/company/articles-and-news/timing-operations-in-pytorch)
+
+## Profilers
+
+In [Python Profilers](../python/README.md#profilers) we have seen how to use general Python profilers to detect where the program is slow. For PyTorch there are specially designed profilers that give you a better view on the PyTorch APIs and enables you to work not only with CPUs but with GPUs, TPUs, and other hardware. These are designed to give a very small overheads and provide access to fine grained APIs not visible from Python profilers.
+
+Since PyTorch operations are usually performed asynchronously the regular profilers like cProfile will not be able to provide correct measurements since it doesn't know how long the actual kernel operation has taken and it'll instead report something that it can see that happens on CPU.
+
+### torch.profiler
+
+`torch.profiler` allows one to profile PyTorch API, correctly measuring the actual execution time which often is done asynchronously - that is a Python dispatchers pushes the kernel execution command into a queue and then when the scheduler sees an opportunity the kernel gets executed. This functionality cannot be performed with Python profilers like cProfile.
+
+Let's look at a simple example:
+
+```python
+# torch-profile-linear-example.py
+import torch
+from torch.profiler import profile, ProfilerActivity
+
+linear = torch.nn.Linear(1024, 1024).to("cuda")
+x = torch.randn(256, 512, 1024, device="cuda")
+
+# warmup
+out = linear(x)
+torch.cuda.synchronize()
+
+with profile(activities=[ProfilerActivity.CUDA], with_stack=True) as prof:
+    out = linear(x)
+    torch.cuda.synchronize()
+print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10, max_name_column_width=50))
+```
+
+It creates a Linear layer, creates a random input tensor and feeds it to the Linear layer. This is done twice, the first time is the warmup which we ignore and the second time we run the linear layer with `torch.profiler` and then print the profiler report:
+
+```bash
+$ python torch-profile-linear-example.py
+--------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------
+                                              Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg    # of Calls
+--------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------
+sm90_xmma_gemm_f32f32_tf32f32_f32_tn_n_tilesize...         0.00%       0.000us         0.00%       0.000us       0.000us     692.898us        99.77%     692.898us     692.898us             1
+                                   Memset (Device)         0.00%       0.000us         0.00%       0.000us       0.000us       1.569us         0.23%       1.569us       1.569us             1
+                           Activity Buffer Request        58.16%       1.626ms        58.16%       1.626ms       1.626ms       0.000us         0.00%       0.000us       0.000us             1
+                             cudaStreamIsCapturing         0.20%       5.714us         0.20%       5.714us       5.714us       0.000us         0.00%       0.000us       0.000us             1
+                                        cudaMalloc        15.12%     422.728us        15.12%     422.728us     422.728us       0.000us         0.00%       0.000us       0.000us             1
+                                   cudaMemsetAsync         0.60%      16.840us         0.60%      16.840us      16.840us       0.000us         0.00%       0.000us       0.000us             1
+                             cudaFuncGetAttributes         0.29%       8.029us         0.29%       8.029us       4.014us       0.000us         0.00%       0.000us       0.000us             2
+                               cudaLaunchKernelExC         1.08%      30.300us         1.08%      30.300us      30.300us       0.000us         0.00%       0.000us       0.000us             1
+                             cudaDeviceSynchronize        24.55%     686.310us        24.55%     686.310us     343.155us       0.000us         0.00%       0.000us       0.000us             2
+--------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------
+Self CPU time total: 2.796ms
+Self CUDA time total: 694.467us
+```
+
+From the report it's easy to see that the code spends most of its time performing a GEMM operation, since that's what a linear layer does. You can see that it took 692.898us, which accounted for 97% of CUDA operations of this run. The rest of the calls are various CUDA functions that were used while launching the GEMM operation `sm90_xmma_gemm_f32f32_tf32f32_f32_tn_n_tilesize...`.
+
+Since kernel names tend to include dtype and shapes they can be pretty long, so if you'd like to see the full name, you can make `max_name_column_width` longer, for example:
+```diff
+- print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10, max_name_column_width=50))
++ print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10, max_name_column_width=450))
+```
+
+The other interesting parts of the report are the end-to-end timings:
+```
+Self CPU time total: 2.796ms
+Self CUDA time total: 694.467us
+```
+thus you can see that in total about 2.8 msec were spent on CPU and 0.7 ms msec on CUDA.
+
+Of course, once you profile a whole model, rather than a single Linear layer you will see a lot more kernels in the profiler output and that's where things become interesting.
+
+For more options please refer to the [`torch.profiler` doc](https://docs.pytorch.org/docs/stable/profiler.html).
+
+### When torch.profiler isn't enough
+
+In the introduction it was stated that cProfile isn't the wrong profiler for PyTorch code, however there are situations where you want to use cProfile with PyTorch code.
+
+Recently I have been diagnosing a strange ~1 sec overhead in forward and backward calls, the `torch.profile` forward measurement would take about 100 msec but the total wallclock timer would be around 1 sec. I was getting no help from torch.profile and decided to run cProfile instead. I immediately saw the issue - it was a triton kernel recompilation that was taking about 1 sec. As I was working with a flattened 2D padded input into 1D unpadded input, the final unpadded tensors was different on many steps and was triggering a kernel recompilation which was written to work with specific input length.
+
+Let's reproduce this use case and work with different debug tools to understand the situation.
+
+I assume you already have the correct version of torch installed, if not head [here](https://pytorch.org/get-started/locally/).
+
+We just need `liger-kernel` installed then:
+```bash
+pip install liger-kernel
+```
+
+Let's first write a flexible profiler context manager that allows us to quickly switch between cProfile, `torch.profiler` and no profiler at all.
+
+```python
+# profilers.py
+from contextlib import nullcontext
+from pstats import Stats
+from torch.profiler import profile, record_function, ProfilerActivity
+import cProfile
+import pstats
+import torch
+
+# customize the precision of cProfile to give 6 decimals
+pstats.f8 = lambda x: f"{x:3.6f}"
+
+
+class ProfilerContext:
+    """
+    A proxy Profiler context manager class that can quickly choose between cProfile, torch.profiler and no-profiler w/o changing the end user code (other than changing the profiler type flag)
+
+    Example:
+
+    prof_fwd = ProfilerContext(type="c", name="some context")
+    with prof_fwd():
+        x = 1
+    prof_fwd.report()
+    """
+
+    def __init__(self, type="none", name=None):
+        """
+        Args:
+        - type: "torch": torch.profiler, "c": cProfile, "none": none
+        - name: some context string for the reports
+        """
+        self.torch = False
+        self.c = False
+        if type == "torch":
+            self.torch = True
+        elif type == "c":
+            self.c = True
+        elif type == "none":
+            pass
+        else:
+            raise ValueError(f"the `type` can be one of torch|c|none but got {type}")
+
+        self.name = name if name is not None else "unknown"
+
+        if self.torch:
+            self.ctx = profile(activities=[ProfilerActivity.CUDA], record_shapes=False, with_stack=True)
+        elif self.c:
+            self.ctx = cProfile.Profile()
+        else:
+            self.ctx = nullcontext()
+
+    def __call__(self):
+        if self.torch and torch.cuda.is_available():
+            torch.cuda.synchronize()
+
+        return self.ctx
+
+    def report(self):
+        if self.torch:
+            print(f"*** torch.profile {self.name} ***")
+            print(self.ctx.key_averages().table(sort_by="cuda_time_total", row_limit=20))
+        elif self.c:
+            print(f"*** cProfile {self.name} ***")
+            stats = Stats(self.ctx)
+            stats.sort_stats("tottime").print_stats(20)
+            # cumulative report is useful to understand where some of the large internal time overheads
+            # come from - because it shows you the stack of calls leading to the slow call. So
+            # `tottime` shows candidates to study and `cumulative` for finding context for those calls
+            stats.sort_stats('cumulative').print_stats(50)
+        else:
+            pass # report nothing
+```
+
+Now let's use it to profile 2 forward calls using [Liger Kernel](https://github.com/linkedin/Liger-Kernel):
+
+```python
+# liger-kernel-varlen-recompile.py
+import torch
+import time
+from liger_kernel.transformers import AutoLigerKernelForCausalLM
+from profilers import ProfilerContext
+
+#PROFILER_TYPE = "c"
+PROFILER_TYPE = "torch"
+#PROFILER_TYPE = "none"
+
+model = AutoLigerKernelForCausalLM.from_pretrained("Qwen/Qwen3-0.6B").to("cuda")
+
+batch_size = 5
+seq_len = 512
+vocab_size = model.config.vocab_size
+
+input_ids = torch.randint(0, vocab_size, (batch_size, seq_len), device=model.device)
+attention_mask = torch.ones_like(input_ids)
+
+for i in range(2):
+    prof = ProfilerContext(type=PROFILER_TYPE, name=f"FWD {i}")
+    start = time.perf_counter()
+    with prof(): outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+    prof.report()
+    print(f"wallclock duration: {(time.perf_counter()-start)*1000:0.3f} msecs")
+```
+
+When we run it we get this discrepancy I mentioned earlier:
+```bash
+$ pytest liger-kernel-varlen-recompile.py
+*** torch.profile FWD 0 ***
+[...]
+Self CPU time total: 119.385ms
+Self CUDA time total: 25.041ms
+
+wallclock duration: 1003.727 msecs
+```
+
+You can see that the difference between CPU/CUDA time reports and the measured wallclock duration is huge, but on the second step the difference is much smaller:
+
+```
+*** torch.profile FWD 1 ***
+[...]
+Self CPU time total: 59.184ms
+Self CUDA time total: 25.011ms
+
+wallclock duration: 228.978 msecs
+```
+
+I trimmed out most of the profiling report to show just the relevant for this discussion parts.
+
+Now why does the first forward call takes much longer than PyTorch's `forward` call? Is it because something happens that is not PyTorch related? So let's use the same script but switch from `torch.profile` to `cProfile`, but just editing the script to:
+```
+PROFILER_TYPE = "c"
+#PROFILER_TYPE = "torch"
+```
+Now when we rerun the script, we quickly see the issue on the first forward call:
+
+```
+*** cProfile FWD 0 ***
+         113616 function calls (109641 primitive calls) in 3.290 seconds
+
+   Ordered by: internal time
+   List reduced from 947 to 20 due to restriction <20>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+       28 1.991778 0.071135 1.991778 0.071135 {built-in method torch._C._nn.scaled_dot_product_attention}
+       57 0.427335 0.007497 0.427335 0.007497 {built-in method torch.cat}
+      398 0.268139 0.000674 0.268139 0.000674 {method 'update' of '_hashlib.HASH' objects}
+      197 0.134879 0.000685 0.134879 0.000685 {built-in method torch._C._nn.linear}
+       28 0.107747 0.003848 0.107747 0.003848 {built-in method torch.empty_like}
+      475 0.091337 0.000192 0.091337 0.000192 {method 'read' of '_io.BufferedReader' objects}
+        1 0.050481 0.050481 0.055220 0.055220 python3.12/site-packages/transformers/models/qwen3/modeling_qwen3.py:319(forward)
+       80 0.035789 0.000447 0.036184 0.000452 {built-in method _io.open}
+      115 0.025036 0.000218 0.025036 0.000218 {method '__exit__' of '_io._IOBase' objects}
+    144/7 0.008807 0.000061 0.037330 0.005333 {built-in method builtins.exec}
+        6 0.005818 0.000970 0.005818 0.000970 {built-in method _imp.create_dynamic}
+        1 0.005175 0.005175 0.005175 0.005175 {method 'all' of 'torch._C.TensorBase' objects}
+      376 0.004812 0.000013 0.004812 0.000013 {built-in method posix.stat}
+```
+
+One can instantly see that there are quite a few calls that are clearly from the libc library and which interface with the system, e.g., the `exec`, `posix.stat` and `io.open` calls. This is definitely something we don't want to happen during the super fast `forward`/`backward` calls using PyTorch.
+
+The cProfile wrapper I wrote dumps the profiler data twice, first sorted by internal time which helps us quickly see which methods are slow in general - but that doesn't help us understand where these calls came from, so the second dump sorts by accumulation time and helps us discover the caller stack trace. So if we look at the second dump:
+
+```
+         113616 function calls (109641 primitive calls) in 3.290 seconds
+
+   Ordered by: cumulative time
+   List reduced from 947 to 50 due to restriction <50>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+[...]]
+      141 0.000894 0.000006 0.620426 0.004400 /home/yak/miniconda3/envs/dev/lib/python3.12/site-packages/liger_kernel/ops/utils.py:33(wrapper)
+      169 0.000906 0.000005 0.524757 0.003105 /home/yak/miniconda3/envs/dev/lib/python3.12/site-packages/triton/runtime/jit.py:370(<lambda>)
+      169 0.004586 0.000027 0.523851 0.003100 /home/yak/miniconda3/envs/dev/lib/python3.12/site-packages/triton/runtime/jit.py:695(run)
+      113 0.000454 0.000004 0.498234 0.004409 /home/yak/miniconda3/envs/dev/lib/python3.12/site-packages/liger_kernel/transformers/rms_norm.py:37(forward)
+      113 0.000670 0.000006 0.490840 0.004344 /home/yak/miniconda3/envs/dev/lib/python3.12/site-packages/liger_kernel/ops/rms_norm.py:605(forward)
+      113 0.002546 0.000023 0.490049 0.004337 /home/yak/miniconda3/envs/dev/lib/python3.12/site-packages/liger_kernel/ops/rms_norm.py:409(rms_norm_forward)
+        5 0.000087 0.000017 0.435603 0.087121 /home/yak/miniconda3/envs/dev/lib/python3.12/site-packages/triton/runtime/jit.py:826(_do_compile)
+        5 0.000169 0.000034 0.435442 0.087088 /home/yak/miniconda3/envs/dev/lib/python3.12/site-packages/triton/compiler/compiler.py:226(compile)
+       57 0.427335 0.007497 0.427335 0.007497 {built-in method torch.cat}
+       28 0.000101 0.000004 0.426423 0.015229 /home/yak/miniconda3/envs/dev/lib/python3.12/site-packages/transformers/cache_utils.py:742(update)
+       28 0.000226 0.000008 0.426321 0.015226 /home/yak/miniconda3/envs/dev/lib/python3.12/site-packages/transformers/cache_utils.py:98(update)
+        5 0.000105 0.000021 0.368456 0.073691 /home/yak/miniconda3/envs/dev/lib/python3.12/site-packages/triton/runtime/cache.py:307(get_cache_key)
+        1 0.000693 0.000693 0.349386 0.349386 /home/yak/miniconda3/envs/dev/lib/python3.12/site-packages/triton/runtime/cache.py:271(triton_key)
+      398 0.268139 0.000674 0.268139 0.000674 {method 'update' of '_hashlib.HASH' objects}
+```
+
+We can quickly understand that the weird libc calls came from Liger Kernel using Triton, which in turn compiles the kernel and caches it. Hopefully it's obvious from the stack trace above.
+
+Now, normally it's perfectly fine that the first call is likely to run some optimizations (e.g. `torch.compile`) which could take longer than the subsequent calls, but in case of the older versions of liger-kernel there was a bug that recompiled and cached the `RMSNorm` kernel for every new sequence length, which massively impacted the end-to-end performance (moreover it'd do it twice for `forward` and `backward` since those are 2 different kernels).
+
+So if you install `pip install liger-kernel==0.6.1` you will see this problem if your sequence length changes from step to step. I found that installing `liger-kerne>=0.8.0` fixes the problem.
+
+In general when you benchmark code you need a warmup phase where the code is exercised first and you start benchmarking things after step 2 or even later at times, but in this case I wanted to demonstrate how cProfile can still be useful when you profile seemingly pure PyTorch code and you observe that it's underperforming, and it was enough to do it in the very first step. But it'd work just as fine in step 2 and onwards.
