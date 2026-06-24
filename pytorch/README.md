@@ -1678,6 +1678,8 @@ Of course, once you profile a whole model, rather than a single Linear layer you
 
 For more options please refer to the [`torch.profiler` doc](https://docs.pytorch.org/docs/stable/profiler.html).
 
+Additionally, here is [an excellent introduction to `torch.profiler` from the HuggingFace team](https://huggingface.co/blog/torch-profiler).
+
 ### When torch.profiler isn't enough
 
 In the introduction it was stated that cProfile isn't the wrong profiler for PyTorch code, however there are situations where you want to use cProfile with PyTorch code.
