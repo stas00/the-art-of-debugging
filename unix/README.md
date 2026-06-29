@@ -238,7 +238,7 @@ $ echo $?
 
 So not only we got the correct exit code to the caller, we can sometimes even interpret what the failure type it was.
 
-The possible exit codes are listed [here](https://tldp.org/LDP/abs/html/exitcodes.html). and `127` corresponds to "command not found" error - which is indeed the case here. Though most of the time the time the exit code will be `1`, which is a catch all, unless the user took care to set a custom exit code.
+The possible exit codes are listed [here](https://tldp.org/LDP/abs/html/exitcodes.html). and `127` corresponds to "command not found" error - which is indeed the case here. Though most of the time the exit code will be `1`, which is a catch all, unless the user took care to set a custom exit code.
 
 
 
@@ -465,7 +465,7 @@ read(3, "U\r\r\n\0\0\0\0\24\216\177c\211\21\0\0\343\0\0\0\0\0\0\0\0\0\0\0\0\0\0\
 read(3, "", 1)                          = 0
 close(3)
 ```
-It's important to notice that file descriptors are re-used, so we have seen the same FD 3 twice, but each time it was open to a different file.
+It's important to notice that file descriptors are reused, so we have seen the same FD 3 twice, but each time it was open to a different file.
 
 If your program is for example trying to reach to the Internet, you can also tell these calls from `strace` as the program would be reading from a socket file descriptor.
 

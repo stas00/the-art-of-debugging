@@ -89,7 +89,7 @@ On the other hand if your data is small, you can fit onto a single small gpu and
 
 Of course, this saves costs as well. And reduces carbon footprint.
 
-This also allows you to develop locally on your desktop/laptop w/o you needing the complication of a remote server. If you have a powerful recent CPU, you might not even need the GPU. If can't have a GPU in your laptop - get an eGPU.
+This also allows you to develop locally on your desktop/laptop w/o you needing the complication of a remote server. If you have a powerful recent CPU, you might not even need the GPU. If you can't have a GPU in your laptop - get an eGPU.
 
 footnote: as long as you're not a Mac user, who as I understand simply can't have a GPU as of this writing not in their laptop nor even use an eGPU.
 
@@ -142,9 +142,9 @@ Now you just need to hit `arrow up` in most Unix shells like Bash to repeat this
 
 Certainly, if you have multiple commands to deal with the one-liner approach might not work well, then put that commands sequence into a shell script and repetitively launch that script instead. Then you can even have a variety of different debug scripts with the variations that you need.
 
-This idea in a way can be called an atomic operation, where the concept ensures that several sequential actions always happen in the exact same order and they happens a single operation.
+This idea in a way can be called an atomic operation, where the concept ensures that several sequential actions always happen in the exact same order and they happen as a single operation.
 
-This is also why notebook technologies like [Jupyter Notebook](./https://jupyter.org/), [IPython](https://en.wikipedia.org/wiki/IPython) and alike, which allow you to go back and forth between different lines of code and re-execute them selectively, are super-useful at quick prototyping, but can be terrible to use for debug purposes because the execution order can't be enforced easily and it is tempting to re-run only parts of the notebook and not wait for a potentially slow full re-run.
+This is also why notebook technologies like [Jupyter Notebook](https://jupyter.org/), [IPython](https://en.wikipedia.org/wiki/IPython) and alike, which allow you to go back and forth between different lines of code and re-execute them selectively, are super-useful at quick prototyping, but can be terrible to use for debug purposes because the execution order can't be enforced easily and it is tempting to re-run only parts of the notebook and not wait for a potentially slow full re-run.
 
 A need for a file auto-save falls into this category as well. Since edit-try, edit-try, edit-try cycle is always repeated in the debug process, if the edited change isn't always saved before it's tried, the exact same problem of testing the wrong hypotheses occurs and the discovery of a working solution could be missed completely.
 
@@ -167,7 +167,7 @@ now the next command in the sequence will only be executed if the previous one w
 
 If you repeat the same commands often - consider using aliases. Especially in situations when commands use multiple difficult to remember flags.
 
-suggestion: always add a few aliases at a time and start using them before adding new aliases. Like learning a new new languages if you don't use it you lose it.
+suggestion: always add a few aliases at a time and start using them before adding new aliases. Like learning a new language if you don't use it you lose it.
 
 Here are some practical examples of aliases that I type probably dozens of times daily:
 
@@ -525,7 +525,7 @@ Use case: an import failing - move it into a single import one liner. For exampl
 python -c "import torch"
 ```
 
-Use case: a large program failing due to a model or tokenizer or config loading failing after a sizeable overhead of loading other things. Move that failing component out into a one-liner and test it alone. One common example is when you use a private HF hub repo and you are missing an auth token and you wan to debug that. Let's move it into a one liner:
+Use case: a large program failing due to a model or tokenizer or config loading failing after a sizeable overhead of loading other things. Move that failing component out into a one-liner and test it alone. One common example is when you use a private HF hub repo and you are missing an auth token and you want to debug that. Let's move it into a one liner:
 
 ```
 python -c 'import sys; from transformers import AutoModel; AutoModel.from_pretrained(sys.argv[1])' t5-small
@@ -564,7 +564,7 @@ python -c "$(echo -e "a='True'\nif a : print(1)")"
 # same with exec:
 python -c "import torch; exec('with torch.cuda.device(0):\n  x = torch.ones(1,1)')"
 ```
-but this is already very difficult to comprehend so the befit is greatly reduced. Though I saved these recipes as sometimes I still want this available to me over a real program.
+but this is already very difficult to comprehend so the benefit is greatly reduced. Though I saved these recipes as sometimes I still want this available to me over a real program.
 
 
 ## Running out of resources: disk space, cpu memory, gpu memory
@@ -1112,7 +1112,7 @@ There is nothing special about `die` - it can be whatever string you want that w
 
 Things are a bit more complicated if the program is not interpreted but compiled, as in C/C++ languages, in which case you usually need to first run some `make` command to ensure any modified files have been recompiled. But otherwise the same principle applies - except the intentional "breaking"-process, which would be different depending on the language.
 
-For more Python nuances see [Debugging the right Python package](../python#debugging-the-right-python-package).
+For more Python nuances see [Ensuring the Python package you edit is the one that is run](../python/README.md#ensuring-the-python-package-you-edit-is-the-one-that-is-run).
 
 
 ## Debugging with large payloads

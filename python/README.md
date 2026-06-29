@@ -240,7 +240,7 @@ If you compare before and after:
 1. there is no `pip install`
 2. a new environment variable `PYTHONPATH=src` is added before the program is run and it's active only for the duration of the program.
 
-we used `src` because that's where source files of HF `transformers` package reside , that is they are under `[src/](https://github.com/huggingface/transformers/tree/main/src/). Other git repos could use a different path where they place their modules, and actually it's even more common to not have any prefix at all. If there is no profix then use `PYTHONPATH=.` which means the current directory is where Python can find the packages at.
+we used `src` because that's where source files of HF `transformers` package reside, that is they are under `[src/](https://github.com/huggingface/transformers/tree/main/src/). Other git repos could use a different path where they place their modules, and actually it's even more common to not have any prefix at all. If there is no prefix then use `PYTHONPATH=.` which means the current directory is where Python can find the packages at.
 
 Why would you want to do that? If you're like me, I have multiple clones of the same repo, e.g.:
 
@@ -285,7 +285,7 @@ $ PYTHONPATH=`pwd`/src:$PYTHONPATH python -c 'import sys; print("\n".join(sys.pa
 ```
 in this example I'm continuing the situation with HF `transformers` where `src` is the base sub-directory inside the git clone, but other projects might have a different subdir or none. Note how `/code/huggingface/transformers-a/src` appears first in the list.
 
-2. You can use the [purposefully break the script approach](../methodology#am-i-editing-the-right-file-and-the-right-class) to validate that the files you're editing are the files that actually get loaded.
+2. You can use the [purposefully break the script approach](../methodology/README.md#am-i-editing-the-right-file-and-the-right-class) to validate that the files you're editing are the files that actually get loaded.
 
 
 ## Setting up your test suite to always use the git repo's Python packages
