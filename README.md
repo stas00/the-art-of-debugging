@@ -25,9 +25,9 @@ Writing about debugging in the void is very difficult and since I haven't been s
 
 2. **[Debugging Compiled Programs](./compiled-programs/)** - `gdb`, `ldd`, `nm`, `LD_LIBRARY_PATH`, `LD_PRELOAD`, etc.
 
-3. **[Debugging Python](./python/)** - `py-spy`, paths, auto-print, etc.
+3. **[Debugging Python Programs](./python/)** - `py-spy`, paths, auto-print, etc.
 
-4. **[Debugging PyTorch](./pytorch/)** - cpu and gpu memory, performance, models, tensors, etc.
+4. **[Debugging PyTorch Programs](./pytorch/)** - cpu and gpu memory, performance, models, tensors, etc.
 
 5. **[Unix Tools For Debugging](./unix/)** - `bash`, `strace`, `make`, prompt, `nohup`, etc.
 

@@ -1,3 +1,14 @@
 *.o
 *.so
 *.so.*
+
+# python caches
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# generated docs / build output
+*.html
+*.pdf
+chapters-html.txt
+

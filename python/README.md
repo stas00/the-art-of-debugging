@@ -114,7 +114,6 @@ There is also built-in `vars`, which also has the issue that it shows only the i
 
 ```python
 # print_object_4.py
-import rich;
 class A():
     foo = 1
     def __init__(self): self.bar = 2
@@ -162,7 +161,7 @@ The closest Python built-in way I found is `inspect.getmembers()`, but alas it w
 
 ```python
 # print_object_6.py
-import rich;
+import inspect
 class A():
     foo = 1
     def __init__(self): self.bar = 2

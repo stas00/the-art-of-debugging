@@ -1,4 +1,4 @@
-# Debugging PyTorch
+# Debugging PyTorch Programs
 
 A lot of the PyTorch debug notes are in my Machine Learning Engineering online book [here](https://github.com/stas00/ml-engineering/blob/master/debug/pytorch.md).
 
