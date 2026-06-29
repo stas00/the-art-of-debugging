@@ -69,7 +69,7 @@ tensor([[1.0, 2.0],
         [3.0, 4.0]])
 ```
 
-If you ever debugged an assembly code that is operates on hex code (`[0-9A-F]`) often someone would inject hex  sequences like `DEADBEEF` because it really stands out in a hex code like: `A0E92827A99DEADBEEF183E`. So, often, you can be creative and create synthetic data which will really make it easy to see what the problem is. At other times any **small** random data will do.
+If you ever debugged an assembly code that is operates on hex code (`[0-9A-F]`) often someone would inject hex sequences like `DEADBEEF` because it really stands out in a hex code like: `A0E92827A99DEADBEEF183E`. So, often, you can be creative and create synthetic data which will really make it easy to see what the problem is. At other times any **small** random data will do.
 
 Even if you have to eventually use real data, still try to use the smallest possible real data.
 
@@ -89,7 +89,7 @@ On the other hand if your data is small, you can fit onto a single small gpu and
 
 Of course, this saves costs as well. And reduces carbon footprint.
 
-This also allows you to develop locally on your desktop/laptop w/o you needing the complication of a remote server. If you have a powerful recent CPU, you might not even need the GPU. If can't have a GPU in your laptop - get an eGPU.
+This also allows you to develop locally on your desktop/laptop w/o you needing the complication of a remote server. If you have a powerful recent CPU, you might not even need the GPU. If you can't have a GPU in your laptop - get an eGPU.
 
 footnote: as long as you're not a Mac user, who as I understand simply can't have a GPU as of this writing not in their laptop nor even use an eGPU.
 
@@ -128,23 +128,23 @@ case study: when we were preparing for BLOOM-176B training we were getting a dea
 
 If you need to run from your shell just these 2 lines on every restart:
 
-```
+```bash
 rm -r data
 ./launch.sh
 ```
 and the `data` folder impacts how `launch.sh` behaves, you're very likely to forget to reset `data` at some point and run `launch.sh` thinking that you did and get erroneous outcomes which could derail the whole debug process completely since you might accidentally discard the only salvation idea that mistakenly didn't get tested, but you thought you did and the outcome erroneously showed that it wasn't it.
 
 So the foolproof methodology is to change the above 2 commands into a single compound one-liner:
-```
+```bash
 rm -r data; ./launch.sh
 ```
 Now you just need to hit `arrow up` in most Unix shells like Bash to repeat this command again and again.
 
 Certainly, if you have multiple commands to deal with the one-liner approach might not work well, then put that commands sequence into a shell script and repetitively launch that script instead. Then you can even have a variety of different debug scripts with the variations that you need.
 
-This idea in a way can be called an atomic operation, where the concept ensures that several sequential actions always happen in the exact same order and they happens a single operation.
+This idea in a way can be called an atomic operation, where the concept ensures that several sequential actions always happen in the exact same order and they happen as a single operation.
 
-This is also why notebook technologies like [Jupyter Notebook](./https://jupyter.org/), [IPython](https://en.wikipedia.org/wiki/IPython) and alike, which allow you to go back and forth between different lines of code and re-execute them selectively, are super-useful at quick prototyping, but can be terrible to use for debug purposes because the execution order can't be enforced easily and it is tempting to re-run only parts of the notebook and not wait for a potentially slow full re-run.
+This is also why notebook technologies like [Jupyter Notebook](https://jupyter.org/), [IPython](https://en.wikipedia.org/wiki/IPython) and alike, which allow you to go back and forth between different lines of code and re-execute them selectively, are super-useful at quick prototyping, but can be terrible to use for debug purposes because the execution order can't be enforced easily and it is tempting to re-run only parts of the notebook and not wait for a potentially slow full re-run.
 
 A need for a file auto-save falls into this category as well. Since edit-try, edit-try, edit-try cycle is always repeated in the debug process, if the edited change isn't always saved before it's tried, the exact same problem of testing the wrong hypotheses occurs and the discovery of a working solution could be missed completely.
 
@@ -152,12 +152,12 @@ footnote: as much as I like `nano` for quick remote editing on the node, I have 
 
 Going back to the proposition of using `;` to concatenate multiple commands - this approach will always execute each command regardless of whether it succeeded or not. In some situations where any of the commands might fail you might want to use `&&` instead of `;` to do the concatenation so instead of doing:
 
-```
+```bash
 rm -r data; echo start; ./launch.sh
 ```
 you may choose to do:
 
-```
+```bash
 rm -r data && echo start && ./launch.sh
 ```
 now the next command in the sequence will only be executed if the previous one was successful.
@@ -167,11 +167,11 @@ now the next command in the sequence will only be executed if the previous one w
 
 If you repeat the same commands often - consider using aliases. Especially in situations when commands use multiple difficult to remember flags.
 
-suggestion: always add a few aliases at a time and start using them before adding new aliases. Like learning a new new languages if you don't use it you lose it.
+suggestion: always add a few aliases at a time and start using them before adding new aliases. Like learning a new language if you don't use it you lose it.
 
 Here are some practical examples of aliases that I type probably dozens of times daily:
 
-```
+```bash
 # here is how I launch pytest
 alias pyt="pytest --disable-warnings --instafail -rA"
 
@@ -181,7 +181,7 @@ alias pytc="pytest --disable-warnings --collect-only -q"
 
 Some aliases are easier to write as functions, but essentially they act the same as aliases. Examples:
 
-```
+```bash
 # this is the most used alias
 function l()  { ls -lNhF   --color=always "${@-.}" |more; }
 
@@ -199,7 +199,7 @@ principle: have all the aliases for the same tool start with the same letter or 
 Aliases can be a problem when you write documentation and start accidentally including your command line dumps that includes aliases, but others don't have them and suddenly the code instructions in docs work only for you.
 
 To see if something is an alias, use `type`:
-```
+```bash
 $ type l
 l is a function
 l ()
@@ -213,12 +213,12 @@ pyt is aliased to `pytest --disable-warnings --instafail -rA'
 
 As mentioned functions are more flexible than aliases since they allow arguments. Examples:
 
-```
+```bash
 function wrap()       { tar -czf "$1.tgz" "$1"; }
 function wraprar()    { rar a -rr -m5 "$1.rar" "$1"; }
 ```
 and also you can do crazy things like:
-```
+```bash
 # usage: git-replace oldstr newstr
 #
 function git-replace () {
@@ -236,11 +236,11 @@ function git-replace () {
 This handy function replaces one string with another in all files under git.
 
 If you aliased a program with the same name as the program itself:
-```
+```bash
 alias df="/bin/df -h | grep -v /dev/loop"
 ```
 and you want to do something different you then have to use the full path to the program:
-```
+```bash
 /bin/df -ih
 ```
 and then the alias won't be activated.
@@ -326,7 +326,7 @@ Note how this is very dense and very easy to grasp quickly thanks to vertical al
 
 
 As I often load and troubleshoot HF models, datasets, tokenizers I have the following in my HF cheatsheet:
-```
+```bash
 # cache transformer model + tokenizer
 python -c 'import sys; from transformers import AutoModel; AutoModel.from_pretrained(sys.argv[1])' t5-small
 python -c 'import sys; from transformers import AutoTokenizer; AutoTokenizer.from_pretrained(sys.argv[1])' t5-small
@@ -342,7 +342,7 @@ I use the above for testing that the resources can be downloaded and this method
 
 Then in the same cheatsheet I have complicated recipes like:
 
-```
+```bash
 ### re-shard an existing model to 2GB shards
 
 # use the PR version of transformers till it's merged
@@ -403,7 +403,7 @@ If you use debuggers like gdb or pdb, these usually comes with shortcuts - some 
 
 For example, you can create `~/.pdbrc` with:
 
-```
+```bash
 alias nl n;;l
 alias sl s;;l
 ```
@@ -412,7 +412,7 @@ So now when you're inside `pdb` you don't need to type `next` and then `list`, y
 
 Now let's say you need to often dump a complex structure in a certain way. Here is an alias I discovered in someone's `~/.pdbrc`:
 
-```
+```bash
 alias pd for k in sorted(%1.keys()): print "%s%-15s= %-80.80s" % ("%2",k,repr(%1[k]))
 ```
 Now you can just print `pd` in the prompt to get the above command executed - priceless!
@@ -422,7 +422,7 @@ In general, the less you need to type, the more likely you will succeed to resol
 Sometimes it's even possible to completely automate the reporting w/o requiring any typing at all. When I try to debug memory leaks I use tools that report memory usage or deltas automatically. e.g. I developed [ipyexperiments](https://github.com/stas00/ipyexperiments) that auto-reports CPU and GPU memory usage and increments in Jupyter notebook environment. As mentioned earlier one has to be very careful using such environments for debugging so I have to always remember to re-run the whole notebook and not be tempted to re-run only parts of it. But the benefit here is that I can group the code into sections and get auto-reports at how each section of code consumed CPU and/or GPU memory. This is also a fantastic tool for diagnosing memory leaks, as I can re-run the same cell multiple times emulating a loop and see whether the memory usage grows or not.
 
 
-XXX: link to useful gdb aliases - `compiled.md`?
+XXX: link to useful gdb aliases
 
 
 
@@ -435,13 +435,13 @@ There is a way to turn any state reporting tool into a live updating one. `watch
 
 For example, let's say we want to watch the output of `nvidia-smi` updating once a second. This is just:
 
-```
+```bash
 watch -n 1 nvidia-smi
 ```
 Change `1` to `0.5` or `2` to whatever number of seconds you want the refresh to happen at.
 
 I, of course, have it as an alias since I use it all the time:
-```
+```bash
 alias wn='watch -n 1 nvidia-smi'
 alias wnm='nvidia-smi --query-gpu=timestamp,utilization.memory,memory.used --format=csv -l 1'
 ```
@@ -453,18 +453,18 @@ If you work on a tiny 14" laptop or even 17" one consider getting yourself a lar
 Let's look at some more practical `watch -n` examples.
 
 Do you have a problem with a program eating up a disk space on some partition and you want to correlate the execution with that partition? Say, it's a partition named `/tmp`
-```
+```bash
 watch -n 'df -h | grep /tmp'
 ```
 
 One critical methodology to notice here is that I carefully filter only the data I need to watch. While I can have the whole often huge output of `df` refreshing once a second, it'd make noticing the single entry very difficult. By filtering out all the noise I get the signal that I need much easier.
 
 Now, say, you want to watch how your system handles programs that allocate too much memory and has `cgroups` killing it. You could run this little one-liner in a console which would allocate 1GB of cpu memory on each step and print how many were GBs allocated:
-```
+```bash
 perl -le '$|=1; $gbs=10; $b="A"; $gb = $b x 2**30; $y .= $gb and print $_  for 2..$gbs; sleep 20'
 ```
 meanwhile to watch RSS grow by 1GB in another console run:
-```
+```bash
 watch -n 0.5 $'(ps auxc | head -1; ps auxc | grep perl | perl -plae \'$F[5]=sprintf q[%0.3fGB],$F[5]/2**20; $_=qq[@F]\') | column -t'
 ```
 
@@ -473,12 +473,12 @@ Replace `grep perl` with `grep python` and now you can nicely watch only Python 
 footnote: you can tell `top` to do the same (stat `top`, then hit `o`, then type `COMMAND=python`) but you can't automate it. Sometimes you can cheat with `top -p $(pgrep -d "," python)` but the target process has to be running already, I'd rather keep the diagnostics running non-stop.
 
 Aliasing this requires a bunch of backslashes:
-```
+```bash
 alias watch-python=$'watch -n 0.5 \'(ps auxc | head -1; ps auxc | grep python | perl -plae "\$F[5]=sprintf q[%0.3fGB],\$F[5]/2**20; \$_=qq[@F]") | column -t\''
 ```
 
 Specifically for `top` limitations to filtering, `htop` is more flexible filtering-wise. For example: filter by python, sort by RSS, only show my procs
-```
+```bash
 htop -F python -s M_RESIDENT -u `whoami`
 ```
 To get the full list of cols to sort by `htop --sort-key help`
@@ -495,7 +495,7 @@ But `ps` can give me much more narrowing power, since you can filter by more thi
 Sometimes when you try to debug excessive resource usage, the code runs too fast to be able to see the level of consumption in an external monitor. In this situation injecting `sleep` calls in the code being debugged, usually right after the code which is a suspect to overuse a resource in question, can be very helpful during debug when you need to watch resource usages.
 
 As you have seen in the example from the section above:
-```
+```bash
 perl -le '$|=1; $gbs=10; $b="A"; $gb = $b x 2**30; $y .= $gb and print $_  for 2..$gbs; sleep 20'
 ```
 After we made this one liner to allocate 10GB of CPU memory, we sleep for 20 seconds so that we could observe this memory being allocated in `top` or another tool.
@@ -505,7 +505,7 @@ After we made this one liner to allocate 10GB of CPU memory, we sleep for 20 sec
 
 This is a program:
 
-```
+```bash
 #!/bin/bash
 
 echo this is time
@@ -513,7 +513,7 @@ date
 ```
 
 This is a one-liner program
-```
+```bash
 echo this is time; date
 ```
 
@@ -521,13 +521,13 @@ If a program can be reduced to a single line that can be copy-n-pasted into the 
 
 Use case: an import failing - move it into a single import one liner. For example, if you have `import torch` failing, test it standalone:
 
-```
+```bash
 python -c "import torch"
 ```
 
-Use case: a large program failing due to a model or tokenizer or config loading failing after a sizeable overhead of loading other things. Move that failing component out into a one-liner and test it alone. One common example is when you use a private HF hub repo and you are missing an auth token and you wan to debug that. Let's move it into a one liner:
+Use case: a large program failing due to a model or tokenizer or config loading failing after a sizeable overhead of loading other things. Move that failing component out into a one-liner and test it alone. One common example is when you use a private HF hub repo and you are missing an auth token and you want to debug that. Let's move it into a one liner:
 
-```
+```bash
 python -c 'import sys; from transformers import AutoModel; AutoModel.from_pretrained(sys.argv[1])' t5-small
 python -c 'import sys; from transformers import AutoTokenizer; AutoTokenizer.from_pretrained(sys.argv[1])' t5-small
 python -c 'import sys; from transformers import AutoConfig; AutoConfig.from_pretrained(sys.argv[1])' t5-small
@@ -545,7 +545,7 @@ Key benefits of using one-liners over real programs:
 - once run it's in the shell history - so it's very easy to iterate over previously run one-liners
 
 footnote: stepping aside from the discussion of debugging I use one-liners for refactoring/renaming - since I can then share these with others who are impacted by my changes and they can just copy-n-paste my commands and immediately update their code to adapt to the new API. I did a lot of those in HF transformers' PRs, e.g. [this one](https://github.com/huggingface/transformers/pull/7863) where I did things like:
-```
+```bash
 find . -type d -name ".git" -prune -o -type f -exec \
 perl -pi -e 's|require_multigpu|require_torch_multigpu|g' {} \;
 ```
@@ -558,13 +558,13 @@ Now you will observe how I use a lot more Perl one-liners in this guide, rather 
 
 As long as you don't need to do anything that comes with `:` in Python, it should mostly work, but as soon as you need to do something like `if a: b()` it breaks due to its parser. It's possible to hack around it using methods like:
 
-```
+```bash
 # delegate \n injection to shell:
 python -c "$(echo -e "a='True'\nif a : print(1)")"
 # same with exec:
 python -c "import torch; exec('with torch.cuda.device(0):\n  x = torch.ones(1,1)')"
 ```
-but this is already very difficult to comprehend so the befit is greatly reduced. Though I saved these recipes as sometimes I still want this available to me over a real program.
+but this is already very difficult to comprehend so the benefit is greatly reduced. Though I saved these recipes as sometimes I still want this available to me over a real program.
 
 
 ## Running out of resources: disk space, cpu memory, gpu memory
@@ -576,7 +576,7 @@ but this is already very difficult to comprehend so the befit is greatly reduced
 Sometimes you have to deal with running out of disk space while running a program. For example, let's say, you have a process which besides many other things untars various files and which comes down crashing because `/tmp` runs out of disk space while it runs, but this happens after 10min of running, which is too too long of a wait time to be productive.
 
 You can then precipitate the event by filling up the partition to almost full and then the event will arrive much faster. One of the ways of doing that is to quickly create a large file of the size you desire. For example, if you have 29GB free and you want to leave only 1GB free, then create a 28GB file with:
-```
+```bash
 cd /tmp
 dd if=/dev/zero of=/tmp/tmp.bin bs=1G count=28
 ```
@@ -588,7 +588,7 @@ And now when you re-run your program it'll should fail quickly since that partit
 This approach works, but it isn't great since it could impact your system's functioning. Instead you can just create a temporary RAM-based filesystem of 1GB and then tell the application to use it instead of `/tmp`.
 
 Step 1. create a 1GB `tmpfs` and mount it at `~/ramdisk`:
-```
+```bash
 mkdir ~/ramdisk
 sudo mount -t tmpfs -o size=1G,user,mode=1777 tmpfs ~/ramdisk
 ```
@@ -604,7 +604,7 @@ The additional advantage is that this filesystem is much faster than your normal
 Just beware that `tmpfs` uses volatile virtual memory. When you unmount this partition or reboot your system all files created in this partition will disappear. You can read about tmpfs [here](https://www.kernel.org/doc/html/latest/filesystems/tmpfs.html).
 
 When finished with the debug, unmount this partition to free up the borrowed CPU memory:
-```
+```bash
 sudo umount ~/ramdisk
 ```
 
@@ -614,12 +614,12 @@ If the application fails because it runs out of memory, but it occurs after many
 
 For example, here is how you can allocate 10GB and hold it in use - 1GB on each step and print how many GBs were allocated:
 
-```
+```bash
 perl -le '$|=1; $gbs=10; $b="A"; $gb = $b x 2**30; $y .= $gb and print $_  for 2..$gbs; sleep 1000'
 ```
 
 In another shell you can watch how the Resident memory usage grows in real time, 1GB at a time.
-```
+```bash
 watch -n 0.5 $'(ps auxc | head -1; ps auxc | grep perl | perl -plae \'$F[5]=sprintf q[%0.3fGB],$F[5]/2**20; $_=qq[@F]\') | column -t'
 ```
 
@@ -630,7 +630,7 @@ Now you can run your original program with a much reduced available CPU memory.
 But sometimes a much better approach is to create a special shell where you limit the desired resources to a controlled amount:
 
 Step 1. launch a new shell:
-```
+```bash
 systemd-run --user --scope -p MemoryHigh=5G -p MemoryMax=5G -p MemorySwapMax=3G --setenv="MEMLIMIT=5GB" bash
 ```
 
@@ -641,7 +641,7 @@ Now any process launched from this shell will get killed if it consumes more tha
 The `MemoryHigh` setting is useful if you want the system to throttle the processes when they allocate more than `MemoryHigh` of CPU memory. So in this example we set it to the same value as `MemoryMax` so it'll have no throttling impact.
 
 I use `--setenv="MEMLIMIT=5GB"` as a helper so that later I can check what limit I had set and it is useful to check if we are inside the shell with a given limit:
-```
+```bash
 $ echo $MEMLIMIT
 5GB
 ```
@@ -649,7 +649,7 @@ $ echo $MEMLIMIT
 Step 2. Run a program that consumes more than the limit you set in Step 1
 
 Let's reuse the one liner that allocates 1GB at a time, up to 10GB:
-```
+```bash
 $ perl -le '$|=1; $gbs=10; $b="A"; $gb = $b x 2**30; $y .= $gb and print $_  for 2..$gbs; sleep 1000'
 2
 3
@@ -672,7 +672,7 @@ for additional properties that can be set [this section](https://www.freedesktop
 Now we have dealt with emulating running out of disk space, CPU memory and now we come to the GPU memory. We will use the same principle as before - we can pre-allocate a large chunk of the GPU memory leaving only enough for the test run to occur. This allows us to get to the problematic event much sooner than if we have a huge GPU with lots of free memory. Especially if the issue is an actual memory leak and not a cached memory and it's happening slowly.
 
 First, install `ipyexperiments`
-```
+```bash
 pip install ipyexperiments
 ```
 
@@ -680,7 +680,7 @@ Now, say, you want to leave 3GB of free memory on your GPU card before you launc
 
 Step 1. Run a magical one-liner to use-up all but 3GB of GPU memory
 
-```
+```bash
 python -c 'import time, ipyexperiments.utils.mem; \
 do_not_delete = ipyexperiments.utils.mem.gpu_mem_leave_free_mbs(3<<10); \
 time.sleep(1000)'
@@ -722,7 +722,7 @@ Solution: Bisecting all the commits between the known good and bad commits to fi
 We are going to use 2 shell terminals: A and B. Terminal A will be used for `git bisect` and terminal B for testing your software. There is no technical reason why you couldn't get away with a single terminal but it's easier with 2.
 
 1. In terminal A fetch the git repo and install it in devel mode (`pip install -e .`) into your Python environment.
-```
+```bash
 git clone https://github.com/huggingface/transformers
 cd transformers
 pip install -e .
@@ -733,7 +733,7 @@ Also for simplicity we assume that all the dependencies have already been instal
 
 2. next we launch the bisecting - In terminal A, run:
 
-```
+```bash
 git bisect start
 ```
 
@@ -752,12 +752,12 @@ footnote: typically the first 8 hex characters are enough to have a unique ident
 
 
 So now we specify which is the first known good commit:
-```
+```bash
 git bisect good 5a4f340d
 ```
 
 and as we said we will use `HEAD` (latest commit) as the bad one, in which case we can use `HEAD` instead finding out the corresponding SHA string:
-```
+```bash
 git bisect bad HEAD
 ```
 
@@ -783,11 +783,11 @@ The next stage is telling `git bisect` if the current commit is `good` or `bad`:
 To do so in terminal B run your program once.
 
 Then in terminal A run:
-```
+```bash
 git bisect bad
 ```
 If it fails, or:
-```
+```bash
 git bisect good
 ```
 if it succeeds.
@@ -824,14 +824,14 @@ If your program doesn't take too long to run even if there are thousands of comm
 If your program is very slow, try to reduce it to something small - ideally a small reproduction program that shows the problem really fast. Often, commenting out huge chunks of code that you deem irrelevant to the problem at hand, can be all it takes.
 
 If you want to see the progress, you can ask it to show the current range of remaining commits to check with:
-```
+```bash
 git bisect visualize --oneline
 ```
 
 6. Clean up
 
 So now restore the git repo clone to the same state you started from (most likely `HEAD) with:
-```
+```bash
 git bisect reset
 ```
 
@@ -845,7 +845,7 @@ Sometimes, the issue emerges from intentional backward compatibility breaking AP
 a. skipping
 
 If for some reason the current commit cannot be tested - it can be skipped with:
-```
+```bash
 git bisect skip
 ```
 and it `git bisect` will continue bisecting the remaining commits.
@@ -866,17 +866,17 @@ Normally git expects `bad` to be after `good`.
 
 Now, if `bad` happens before `good` revision order-wise and you want to find the first revision that fixed a previously existing problem - you can reverse the definitions of `good` and `bad` - it'd be confusing to work with overloaded logic states, so it's recommended to use a new set of states instead - for example, `fixed` and `broken` - here is how you do that.
 
-```
+```bash
 git bisect start --term-new=fixed --term-old=broken
 git bisect fixed
 git bisect broken 6c94774
 ```
 and then use:
-```
+```bash
 git fixed / git broken
 ```
 instead of:
-```
+```bash
 git good / git bad
 ```
 
@@ -895,44 +895,44 @@ Here what helps is to either have a dedicated versioned config file per experime
 
 So for example, say you need to tweak a directory with 2 files:
 
-```
+```bash
 $ ls -1 experiment/
 config.yaml
 test.py
 ```
 and you invoke the program as:
-```
+```bash
 python experiment/test.py --config experiment/config.yaml
 ```
 
 So let's rename the first set to `experiment1`:
-```
+```bash
 mv experiment experiment1
 ```
 
 So you can create now say 2 additional sets of files:
 
-```
+```bash
 cp -r experiment experiment2
 cp -r experiment experiment3
 ```
 now tweak the files in each of these sets as you wish and when you are about to run the actual debug experiment you can simply symlink to the desired set atomically at execution time:
 
-```
+```bash
 ln -s experiment1 experiment; python experiment/test.py --config experiment/config.yaml
 ```
 and later if you want to do set 2:
-```
+```bash
 ln -s experiment2 experiment; python experiment/test.py --config experiment/config.yaml
 ```
 and same for 3:
-```
+```bash
 ln -s experiment3 experiment; python experiment/test.py --config experiment/config.yaml
 ```
 
 The critical nuance here is that we are changing a single source of truth as compared to changing the folder name in multiple places:
 
-```
+```bash
 python experiment1/test.py --config experiment1/config.yaml
 ```
 
@@ -949,7 +949,7 @@ if you wrote the program to choose a different code path depending on the value 
 SOME_FLAG=exp1 python myprogram.py
 ```
 and not:
-```
+```bash
 export SOME_FLAG=exp1
 python myprogram.py
 ```
@@ -963,13 +963,13 @@ If you're in a SLURM environment, do not `sbatch` the job you debug again and ag
 
 Instead, run once, e.g.:
 
-```
+```bash
 salloc --nodes=1 --ntasks-per-node=1 --exclusive --cpus-per-task=96 --gres=gpu:8 --time=6:00:00 bash
 ```
 after editing the command to match your `sbatch`'s settings.
 
 And now from the new shell it opens, run `srun` as many times as needed:
-```
+```bash
 srun ... your program
 ```
 when finished or if `salloc` timed out or got `scancel`ed - make sure to exit this bash shell (`Ctrl-d`), since otherwise it'll be populate with stale `SLURM_*` environment variables.
@@ -1022,7 +1022,7 @@ CTRL-r # search the history (repeat this last command)
 
 Here is a even easier approach to history search. Add this:
 
-```
+```bash
 $ cat ~/.inputrc
 "\e[A": history-search-backward
 "\e[B": history-search-forward
@@ -1034,14 +1034,14 @@ This setup allows me to type the beginning of the command, say `git` and then hi
 footnote: I think this feature comes from `tcsh` where it's using `Esc-p` and `Esc-n` - but really you can bind these actions to any keys you want to e.g. `"\ep"` and `"\en"` for `Esc-p` and `Esc-n` accordingly.
 
 Finally, you can always search the history using other tools. For example, let's search for `git`
-```
+```bash
 $ history | grep git
  1663  git stash
  1664  git checkout main
  1665  git pull
 ```
 and now you can either copy-n-paste the command that you need or you can even run the wanted command by the number in the first column, so we can do:
-```
+```bash
 $ !1665
 git pull
 Already up to date.
@@ -1051,7 +1051,7 @@ Here Bash echo'ed the command it is about to start and run it.
 
 Here are some other useful settings related to managing bash history related to its size, duplicate management and whether it gets rewritten on every new shell.
 
-```
+```bash
 $ cat ~/.bashrc
 [...]
 # don't put duplicate lines in the history. See bash(1) for more options
@@ -1069,7 +1069,7 @@ HISTFILESIZE=2000
 
 The other useful setting for `~/.inputrc` is:
 
-```
+```bash
 $ cat ~/.inputrc
 [...]
 # allow new line copy with the command
@@ -1084,7 +1084,7 @@ So if you're managing your experiment commands in a file this will allow you to 
 
 When just starting a debugging process it might take a few attempts to realize that the wrong file is being edited. That is changes are made but it's unclear if the change took place or even if it's the right file being edited.
 
-In the modern complex systems, you could be editing the source file in the github repo, or its installed version and then you may have 10 different versions of it installed if you have multiple virtual environments.
+In the modern complex systems, you could be editing the source file in the GitHub repo, or its installed version and then you may have 10 different versions of it installed if you have multiple virtual environments.
 
 footnote: If you use the HF hub - it allows bundling modeling code with the model data files, and then it's even more confusing which file should be edited, since now the code is placed where you don't expect it to be. Surely, there are many other situations like this one.
 
@@ -1112,7 +1112,7 @@ There is nothing special about `die` - it can be whatever string you want that w
 
 Things are a bit more complicated if the program is not interpreted but compiled, as in C/C++ languages, in which case you usually need to first run some `make` command to ensure any modified files have been recompiled. But otherwise the same principle applies - except the intentional "breaking"-process, which would be different depending on the language.
 
-For more Python nuances see [Debugging the right Python package](../python#debugging-the-right-python-package).
+For more Python nuances see [Ensuring the Python package you edit is the one that is run](../python/README.md#ensuring-the-python-package-you-edit-is-the-one-that-is-run).
 
 
 ## Debugging with large payloads
@@ -1126,7 +1126,7 @@ Try to find the smallest model that produces quality output first, and not the f
 In this use case jupyter/ipython and similar persistent environments are excellent because they allow you not to wait for the data to get loaded again and again while you do experiments.
 
 Install the interactive python environment first (or `jupyter` if you prefer that) and let's install HF's `transformers` that we will use in the demonstration:
-```
+```bash
 pip install ipython
 pip install transformers
 ```

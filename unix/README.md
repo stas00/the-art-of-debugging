@@ -70,7 +70,7 @@ Now, there are other excellent power prompt tools out there. The key is to find 
 
 If you want to try my customized setup:
 
-```
+```bash
 cd ~
 git clone https://github.com/magicmonty/bash-git-prompt ~/.bash-git-prompt --depth=1
 cd ~/.bash-git-prompt/themes
@@ -102,7 +102,7 @@ While the instructions use Bash If you use a different shell a lot of the sugges
 
 TLDR: Most of the time it's the best to start Bash scripts with:
 
-```
+```bash
 #!/bin/bash
 set -euo pipefail
 # the rest of the script here
@@ -115,7 +115,7 @@ where the flags are:
 and if you want to see what the script is doing:
 - `set -x` instructs Bash to print out each command it runs with its values
 
-```
+```bash
 #!/bin/bash
 set -x
 # the rest of the script here
@@ -125,7 +125,7 @@ The following sections will explain each of these options.
 #### Trace the execution to see commands and values
 
 Here is a small bash script `test.sh` that does a few assignments and uses sleep to emulate a slow process:
-```
+```bash
 $ cat << "EOT" > test.sh
 #!/bin/bash
 set -x
@@ -136,14 +136,14 @@ EOT
 ```
 
 If you run it:
-```
+```bash
 $ bash ./test.sh
 ```
 you have no idea what it is doing.
 
 Let's turn the execution tracer on by adding `set -x`:
 
-```
+```bash
 $ cat << "EOT" > test.sh
 #!/bin/bash
 set -x
@@ -154,7 +154,7 @@ EOT
 ```
 
 If you run it:
-```
+```bash
 $ bash ./test.sh
 + x=5
 + y=10
@@ -163,7 +163,7 @@ $ bash ./test.sh
 you can now see exactly what it is doing, it'll show every command before it's running it.
 
 Additionally, you can see the values as they get modified. e.g. here we got to see that `y=x+5` resulted in 10. Which is super useful for debugging since you can actually see what the values are. Let's say `x` didn't get set for whatever reason:
-```
+```bash
 $ cat << "EOT" > test.sh
 #!/bin/bash
 set -x
@@ -173,7 +173,7 @@ EOT
 ```
 
 If you run it:
-```
+```bash
 $ bash ./test.sh
 + x=
 + y=5
@@ -188,7 +188,7 @@ you can instantly see that something is wrong with `x`.
 By default Bash scripts will ignore intermediary command failures and will continue the execution, which most of the time is not what you want.
 
 Here is a small bash script `test.sh` that has a typo in the `echo` command
-```
+```bash
 $ cat << EOT > test.sh
 #!/bin/bash
 echooo "is this working"
@@ -197,7 +197,7 @@ EOT
 ```
 
 Let's run it:
-```
+```bash
 $ bash ./test.sh
 ./test.sh: line 2: echooo: command not found
 all is good
@@ -205,7 +205,7 @@ all is good
 
 So despite, `echooo` command failing, the script continues. Additionally if we check the exit code of this run:
 
-```
+```bash
 $ echo $?
 0
 ```
@@ -213,7 +213,7 @@ $ echo $?
 It indicates to the caller that the script finished successfully, when it didn't.
 
 Let's fix that by adding: `set -e` which will now abort the execution of the script on the first error:
-```
+```bash
 $ cat << EOT > test.sh
 #!/bin/bash
 set -e
@@ -224,21 +224,21 @@ EOT
 
 
 Let's run it:
-```
+```bash
 $ bash ./test.sh
 ./test.sh: line 2: echooo: command not found
 ```
 
 As you can see the script exited at the point of failure. And if we check the exit code of this run:
 
-```
+```bash
 $ echo $?
 127
 ```
 
 So not only we got the correct exit code to the caller, we can sometimes even interpret what the failure type it was.
 
-The possible exit codes are listed [here](https://tldp.org/LDP/abs/html/exitcodes.html). and `127` corresponds to "command not found" error - which is indeed the case here. Though most of the time the time the exit code will be `1`, which is a catch all, unless the user took care to set a custom exit code.
+The possible exit codes are listed [here](https://tldp.org/LDP/abs/html/exitcodes.html). and `127` corresponds to "command not found" error - which is indeed the case here. Though most of the time the exit code will be `1`, which is a catch all, unless the user took care to set a custom exit code.
 
 
 
@@ -246,7 +246,7 @@ The possible exit codes are listed [here](https://tldp.org/LDP/abs/html/exitcode
 
 By default Bash scripts will ignore intermediary stage failures in the pipe `|` commands and will continue the execution, which again most of the time is not what you want.
 
-```
+```bash
 $ cat << EOT > test.sh
 #!/bin/bash
 set -e
@@ -256,7 +256,7 @@ EOT
 ```
 
 Let's run it:
-```
+```bash
 $ bash ./test.sh
 ./test.sh: line 3: echooo: command not found
 all is good
@@ -264,7 +264,7 @@ all is good
 
 So despite, `echooo` command failing, the script continues. Additionally if we check the exit code of this run:
 
-```
+```bash
 $ echo $?
 0
 ```
@@ -275,7 +275,7 @@ The problem is the `|` pipe. Since `sort` is successful it masks the failure and
 
 So we also have to add `set -o pipefail` for this to do what I mean:
 
-```
+```bash
 $ cat << EOT > test.sh
 #!/bin/bash
 set -eo pipefail
@@ -285,13 +285,13 @@ EOT
 ```
 
 Let's run it:
-```
+```bash
 $ bash ./test.sh
 ./test.sh: line 3: echooo: command not found
 ```
 So we can see that the program aborted at the broken command
 
-```
+```bash
 $ echo $?
 127
 ```
@@ -303,7 +303,7 @@ and the exit code is again non-0.
 #### Abort on undefined variables
 
 By default Bash scripts will ignore undefined variables used to construct new variables:
-```
+```bash
 $ cat << "EOT" > test.sh
 #!/bin/bash
 x="xxx"
@@ -316,7 +316,7 @@ EOT
 We hope to get the output of `xxx yyy` as the value of `$z`.
 
 Let's run it:
-```
+```bash
 $ bash ./test.sh
 yyy
 ```
@@ -324,7 +324,7 @@ yyy
 If you haven't noticed I made an intentional mistake replacing `$x` with `$X`. You can see the former being defined, but not the latter. Yet, the program runs without errors and generates a non-intended output `yyy`.
 
 If we add `set -u` now Bash will be strict about all variables needing to be defined before they can be used.
-```
+```bash
 $ cat << "EOT" > test.sh
 #!/bin/bash
 set -u
@@ -336,14 +336,14 @@ EOT
 ```
 
 Let's run it:
-```
+```bash
 $ bash ./test.sh
 ./test.sh: line 5: X: unbound variable
 ```
 So we can see that the program aborted at line 5 `z="$X $y"` since `$X` is indeed undefined.
 
 I thought it'd work for using `eval` to do math as well, but the `eval` seems to run in its own space where `set -u` couldn't reach. i.e. this code doesn't fail:
-```
+```bash
 set -u
 x=
 y=$(($x+5))
@@ -356,7 +356,7 @@ echo y=$y
 
 Once any of the `set` commands have been enabled if you have an area where you need to disable the guards, you simply use the `set +` setting, for example, let's demo with `set -e`:
 
-```
+```bash
 $ cat << EOT > test.sh
 #!/bin/bash
 set -e
@@ -373,7 +373,7 @@ EOT
 ```
 
 Let's run it:
-```
+```bash
 $ bash ./test.sh
 prep
 ./test.sh: line 5: echooo: command not found
@@ -394,14 +394,14 @@ As you can see the broken command on line 5 didn't abort the script, due to `set
 `strace` is a super-useful tool which traces any running application at the low-level system calls - e.g. `libC` and alike.
 
 For example, run:
-```
+```bash
 strace python -c "print('strace')"
 ```
 and you will see everything that is done at the system call level as the above program runs.
 
 But usually it's more useful when you have a stuck program that spins all CPU cores at 100% but nothing happens and you want to see what's it doing. In this situation you simply attached to the running program like so:
 
-```
+```bash
 strace --pid PID
 ```
 where you get the PID for example from the output of `top` or `ps`. Typically I just copy-n-paste the PID of the program that consumes the most CPU - `top` usually shows it at the very top of its listing.
@@ -418,7 +418,7 @@ Here we can see that a write call was executed on filedescriptor `1`, which almo
 
 If you're not sure what a filedescriptor is pointing to, normally you can tell from `strace`'s output itself. But you can also do:
 
-```
+```bash
 ls -l /proc/PID/fd
 ```
 where PID is the pid of the currently running program you're trying to investigate.
@@ -465,12 +465,12 @@ read(3, "U\r\r\n\0\0\0\0\24\216\177c\211\21\0\0\343\0\0\0\0\0\0\0\0\0\0\0\0\0\0\
 read(3, "", 1)                          = 0
 close(3)
 ```
-It's important to notice that file descriptors are re-used, so we have seen the same FD 3 twice, but each time it was open to a different file.
+It's important to notice that file descriptors are reused, so we have seen the same FD 3 twice, but each time it was open to a different file.
 
 If your program is for example trying to reach to the Internet, you can also tell these calls from `strace` as the program would be reading from a socket file descriptor.
 
 So let's run an example on a program that downloads files from the HF hub:
-```
+```bash
 strace python -c 'import sys; from transformers import AutoConfig; AutoConfig.from_pretrained(sys.argv[1])' t5-small
 ```
 
@@ -504,12 +504,12 @@ You can see where that again it uses FD 3 but this time it opens a INET6 socket 
 There are many other super useful understandings one can derive from using this tool.
 
 BTW, if you don't want to scroll up-down, you can also save the output to a file:
-```
+```bash
 strace -o strace.txt python -c "print('strace')"
 ```
 
 Now, since you're might want to strace the program from the very beginning, for example to sort out some race condition on a distributed filesystem, you will want to tell it to follow any forked processes. This what the `-f` flag is for:
-```
+```bash
 strace -o log.txt -f python -m torch.distributed.run --nproc_per_node=4 --nnodes=1 --tee 3 test.py
 ```
 
@@ -528,7 +528,7 @@ The `strace` manpage has a ton of other useful options.
 If you need to connect to a remote server launch a command and either logout or let the connection timeout, normally the command will get terminated upon exit.
 
 `nohup` solves this problem. You just need to add `nohup` before the normal command:
-```
+```bash
 nohup ./long-running-command &
 ```
 and you can now safely logout and it'll continue to run until it runs its course.
@@ -537,7 +537,7 @@ any std streams will get saved in `nohup.out`, as `nohup` will pipe `stderr` int
 
 So you may want to redirect it to a log file of your liking:
 
-```
+```bash
 nohup ./long-running-command log.txt &
 ```
 
@@ -550,7 +550,7 @@ nohup ./long-running-command log.txt &
 Debugging `Makefile` can be non-trivial as it's quite old and arcane, but chances are very high that you will run into troubleshooting it sooner or later.
 
 In order that we have something to work with, let's take the `Makefile` from [ipyexperiments](https://github.com/stas00/ipyexperiments):
-```
+```bash
 git clone https://github.com/stas00/ipyexperiments
 cd ipyexperiments
 cat Makefile
@@ -562,7 +562,7 @@ Makefile:13: *** missing separator.  Stop.
 ```
 
 You can ask `cat` to show you all the special characters:
-```
+```bash
 $ cat -e -t -v Makefile
 [...]
 ##@ Testing new package installation$
@@ -581,7 +581,7 @@ test-install: ## test conda/pip package by installing that version them$
 this is broken, as you have white-spaces and not a real tab. The previous output is the valid one.
 
 One useful flag is `-n`:
-```
+```bash
 make -n clean
 ```
 as it shows you what would be run w/o running it, in case you need to be extra careful.
