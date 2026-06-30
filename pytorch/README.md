@@ -190,7 +190,7 @@ else:
 ```
 and, of course, install `pip install einops` for the above code to work.
 
-### Faster Debug and Development with Tiny Models, Tokenizers and Datasets
+### Faster debug and development with tiny models, tokenizers and datasets
 
 If you're debugging problems and develop with full sized models and tokenizers you're likely not working in a very efficient way. Not only it's much more difficult to solve problem, the amount of waiting to get the program to restart and to get to the desirable point can be huge - and cumulatively this can be a huge drain on one's motivation and productivity, not talking about the resolution taking much longer, if at all.
 
@@ -495,7 +495,7 @@ I also recommend to always store the building scripts with the model, so that yo
 Also be aware that since HF `transformers` needs tiny models for their testing, you are very likely to already find one for each architecture available mostly from
 https://huggingface.co/hf-internal-testing (except they didn't include the code of how they were made, but you can now figure it out based on these notes).
 
-Another hint: if you need a slightly different tiny model, you can also start with an already existing tiny model and adapt it instead. Since it's random it's really only about getting the right dimensions. For example if the tiny model you found has 2 layers but you need 8, just resave it with this larger dimension and you're done.
+another hint: if you need a slightly different tiny model, you can also start with an already existing tiny model and adapt it instead. Since it's random it's really only about getting the right dimensions. For example if the tiny model you found has 2 layers but you need 8, just resave it with this larger dimension and you're done.
 
 
 #### Making a tiny dataset
@@ -1148,7 +1148,7 @@ You can't imagine how often I use this debug utility in my day-to-day work.  Eve
 
 For example, here is how I found a memory leak in `all_gather_object`, which you can see from this [Issue](https://github.com/pytorch/pytorch/issues/150798). And there were several other similar leaks in PyTorch I discovered using this tool - all have been fixed since then. But more often, of course, the memory leaks are in my code ;)
 
-### CPU Memory
+### CPU memory
 
 #### Debugging CPU memory OOM
 
@@ -1322,7 +1322,7 @@ request: I'm yet to figure out how to make it work on a k8s pod, probably has so
 
 #####
 
-## Debugging Tensors
+## Debugging tensors
 
 When developing software or dealing with some bugs during training or inference, or writing unit tests we often need to investigate tensors - their data, their attributes or both. In the following sections we are going to dive into the more efficient ways of doing this work.
 
@@ -1573,7 +1573,7 @@ Here we prevent `loss=NaN` situation and instead create an artificial loss `0`, 
 
 You can see it in context [here](https://github.com/deepspeedai/DeepSpeed/blob/df59f203f40c8a292dd019ae68c9e6c88f107026/deepspeed/runtime/sequence_parallel/ulysses_sp.py#L1184-L1186). Though the code has evolved since then, and you can find a more elaborate version [here](https://www.deepspeed.ai/tutorials/ulysses-alst-sequence-parallelism/#part-1-ulysses-sequence-parallelism-for-hf-transformers) in the loss calculation across sequence parallel ranks section.
 
-### Underflow and Overflow Detection
+### Underflow and overflow detection
 
 For this section we are going to use the [underflow_overflow](underflow_overflow.py) library.
 

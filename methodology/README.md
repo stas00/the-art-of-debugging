@@ -4,7 +4,7 @@ This chapter discusses various methodologies for fast and successful debugging.
 
 ## Core principles
 
-### Quick Iterations, Small Payload
+### Quick iterations, small payload
 
 The most important needs of successful debugging
 

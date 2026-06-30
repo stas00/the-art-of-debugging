@@ -53,7 +53,7 @@ export TMPDIR=/tmp/
 in the console you run the python program from.
 
 
-### Printing Object Variables
+### Printing object variables
 
 If you have an object to debug you can't just dump its contents easily. Let's create a simple class with 2 variable - one class and one instance variable, create an object and try to print its contents:
 
@@ -184,7 +184,7 @@ As you can see it prints the variable attributes, but also a lot of dunder attri
 You may have noticed I used `pprint` in a few code samples - which is another handy built-in library for pretty printing nested lists, dictionaries and other large structures. If I were to just `print` - there would have been one long line of output.
 
 
-### Auto-Print What's Being Observed
+### Auto-print what's being observed
 
 Say, you want to see the output of summation:
 
@@ -285,7 +285,7 @@ So again, you can see that it was `b()` that called `a()`. But here the program 
 
 ## Running the code you think you are running
 
-### Ensuring The Python Package You Edit Is The One That Is Run
+### Ensuring the Python package you edit is the one that is run
 
 If you're modifying a git repository of a Python package and then installing into a virtual environment this could be a very error-prone process since you are never sure if you reinstalled the modified files or not when you test things. And that's why instead of using `pip install .` it's much better to use `pip install -e .` which instead of installing the Python files into the virtual environment, tells the latter to access the files from the git clone (or whatever other way the source code is made available). For example, if you're working on HF transformers, here is how to do it better:
 ```bash
