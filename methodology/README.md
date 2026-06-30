@@ -1123,7 +1123,7 @@ CUDA_LAUNCH_BLOCKING=1 python myprogram.py
 
 One side effect of activating such flags is that it changes the timing of the execution and if the async kernel had a deadlock issue, it might disappear and you won't be able to debug the deadlock issue.
 
-case study: when we were preparing for BLOOM-176B training we were getting a deadlock once we used more than a certain amount of gpus and no amount of lost hair helped finding the cause. And very early on, we discovered that when we used `CUDA_LAUNCH_BLOCKING=1` the hanging would disappear. Since we didn't have the luxury of spending a month on figuring it out - we measured the performance and discovered that there was no perceivable slowdown when async-execution was turned off, even though the manpage warns to only ever use `CUDA_LAUNCH_BLOCKING=1` for debug purposes. Of course, you might not be always that lucky, but don't be afraid to go against the recommendations if it unblocks your progress.
+For the full CUDA-specific treatment - including the `CUDA_VISIBLE_DEVICES=""` CPU-fallback approach, the BLOOM-176B case study, and version caveats - see [Dealing with Async CUDA bugs](../pytorch/README.md#dealing-with-async-cuda-bugs) in the PyTorch chapter.
 
 ### SLURM: salloc and srun fast debug combo
 
