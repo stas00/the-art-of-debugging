@@ -23,13 +23,13 @@ Writing about debugging in the void is very difficult and since I haven't been s
 
 1. **[Fast Debugging Methodology](./methodology/)**
 
-2. **[Debugging Compiled Programs](./compiled-programs/)** - `gdb`, `ldd`, `nm`, `LD_LIBRARY_PATH`, `LD_PRELOAD`, etc.
+2. **[Unix Tools for Debugging](./unix/)** - `bash`, `strace`, `make`, prompt, `nohup`, etc.
 
-3. **[Debugging Python Programs](./python/)** - `py-spy`, paths, auto-print, etc.
+3. **[Debugging Compiled Programs](./compiled-programs/)** - `gdb`, `ldd`, `nm`, `LD_LIBRARY_PATH`, `LD_PRELOAD`, etc.
 
-4. **[Debugging PyTorch Programs](./pytorch/)** - cpu and gpu memory, performance, models, tensors, etc.
+4. **[Debugging Python Programs](./python/)** - `py-spy`, paths, auto-print, etc.
 
-5. **[Unix Tools for Debugging](./unix/)** - `bash`, `strace`, `make`, prompt, `nohup`, etc.
+5. **[Debugging PyTorch Programs](./pytorch/)** - cpu and gpu memory, performance, models, tensors, etc.
 
 6. **[Debugging Machine Learning Projects](https://github.com/stas00/ml-engineering/tree/master/debug)** (external)
 
