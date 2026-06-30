@@ -11,5 +11,6 @@ __pycache__/
 *.html
 *.pdf
 chapters-html.txt
+pdf-bookmarks.txt
 
 trash/

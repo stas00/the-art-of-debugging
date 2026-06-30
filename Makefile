@@ -35,14 +35,14 @@ epub: html ## make epub version (from html files)
 		--metadata author="Stas Bekman" \
 		--metadata date="$$(date +%Y-%m-%d)" \
 		--metadata language="en" \
-		--epub-cover-image=imagesThe-Art-of-Debugging-book-cover.png \
+		--epub-cover-image=images/The-Art-of-Debugging-book-cover.png \
 		--resource-path=.:$$(cat chapters-html.txt | xargs -n1 dirname | awk '!seen[$$0]++' | tr "\n" ":") \
 		$$(cat chapters-html.txt | tr "\n" " ")
 
 upload: pdf epub ## upload pdf to the hub
 	cp "Stas Bekman - The Art of Debugging.pdf" the-art-of-debugging-book/
 	cp "Stas Bekman - The Art of Debugging.epub" the-art-of-debugging-book/
-	cdthe-art-of-debugging-book/ && git commit -m "new version" "Stas Bekman - The Art of Debugging.pdf" "Stas Bekman - The Art of Debugging.epub" && git push
+	cd the-art-of-debugging-book/ && git commit -m "new version" "Stas Bekman - The Art of Debugging.pdf" "Stas Bekman - The Art of Debugging.epub" && git push
 
 check-links-local: html-local ## check local links
 	linkchecker --config build/linkcheckerrc $$(cat chapters-html.txt | tr "\n" " ") | tee linkchecker-local.txt

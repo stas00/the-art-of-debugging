@@ -16,7 +16,7 @@ mdit = (
     .enable('table')
 )
 
-my_repo_url = "https://github.com/stas00/ml-engineering/blob/master"
+my_repo_url = "https://github.com/stas00/the-art-of-debugging/blob/master"
 
 def convert_markdown_to_html(markdown_path, args):
     md_content = markdown_path.read_text()
