@@ -45,7 +45,7 @@ It first showed the statement `1+2` and its outcome `3`, followed by a trace of 
 
 It gave us even a rough execution time information in the first column, but secs is too low of a resolution for this particular code example.
 
-Notes:
+notes:
 - on MacOS before using this package you need to add:
 ```bash
 export TMPDIR=/tmp/

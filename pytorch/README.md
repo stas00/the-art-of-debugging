@@ -211,7 +211,7 @@ Once your code is working, do switch to the real model to test the quality of yo
 
 #### Making a tiny model
 
-Important: given their popularity and the well designed simple API I will be discussing HF [`transformers`](https://github.com/huggingface/transformers/) models. But the same principle can be applied to any other model.
+important: given their popularity and the well designed simple API I will be discussing HF [`transformers`](https://github.com/huggingface/transformers/) models. But the same principle can be applied to any other model.
 
 tldr: it's trivial to make a tiny HF `transformers` model:
 
@@ -781,7 +781,7 @@ Besides using a context manager, you can also activate it globally somewhere bef
 
 Additionally you can disable the `NaN` checker to make things a bit faster with: `torch.autograd.set_detect_anomaly(True, check_nan=False)`.
 
-Important: make sure to disable the anomaly detection mode before you put your work to real use because it will slow things down.
+important: make sure to disable the anomaly detection mode before you put your work to real use because it will slow things down.
 
 ### Overcoming CUDA OOM due to memory fragmentation
 
@@ -890,7 +890,7 @@ OK, so we can see PyTorch (at least of this writing) won't reach into CPU RAM an
 
 case study: As I was trying to figure out the maximum sequence length I could do post-training with on DGX Station with Qwen3-32B model, I kept getting alternating CPU-OOM and GPU-OOM events. The reason was that I was offloading optimizer states to CPU RAM since there wasn't enough HBM memory to hold the weights and optimizer states on a single GB300 GPU, but since there isn't that much CPU RAM either, Linux was reaching into the GPU "cookie jar" and stealing GPU memory. It was a very unsettling experience since I had to run dozens of experiments, most of them leading to one or the other OOM, why? because depending on what CPU-side processes were running (think various Linux daemons and user programs) there would be a different amount of CPU RAM available at different times and the behavior would become unpredictable.
 
-The solution: to prevent CPU from stealing GPU memory switch to the CDMM mode (from the default NUMA mode), as explained in a paper linked from [this post](https://developer.nvidia.com/blog/understanding-memory-management-on-hardware-coherent-platforms/) by running:
+solution: to prevent CPU from stealing GPU memory switch to the CDMM mode (from the default NUMA mode), as explained in a paper linked from [this post](https://developer.nvidia.com/blog/understanding-memory-management-on-hardware-coherent-platforms/) by running:
 ```bash
 $ echo options nvidia NVreg_CoherentGPUMemoryMode=driver | sudo tee /etc/modprobe.d/nvidia-openrm.conf
 ```
@@ -1218,11 +1218,11 @@ What we want this time is this line:
 ```
 This gives us the peak memory used by the program, which is the highest amount of CPU memory the program used at any given point of its run. So if you measured your program needing let's say 200GB of CPU RAM and then you try to run it elsewhere where you only have 132GB of CPU memory, it'll not work (most likely it will get killed with [cpu-oom](#debugging-cpu-memory-oom) if cgroups are configured).
 
-Note: when it comes to running out of CPU memory regardless of which memory usage reporting tool you use - typically what you want to track is the Resident Set Size metric, which is also known as RSS (e.g., it's one of the column names in the output of `top`). There are many other metrics, but those are usually not useful for this particular need.
+note: when it comes to running out of CPU memory regardless of which memory usage reporting tool you use - typically what you want to track is the Resident Set Size metric, which is also known as RSS (e.g., it's one of the column names in the output of `top`). There are many other metrics, but those are usually not useful for this particular need.
 
 As I'm writing this I have this problem where I'm trying to fit a huge model into a given number of GPUs and I'm forced to offload some of the model parameters to CPU memory since I can't fit them all into GPU memory, but I'm also running out of CPU memory. So what I do is I scale down the setup to remove half the layers of the model I try to use to measure the memory footprint and then I should be able to extrapolate the required memory for the full model. Of course, the other way is to do math, to calculate how much memory each tensor consumes, but often it's quicker to just measure usage empirically since math is often insufficient as some components get missed in the calculations. Or potentially you could get more CPU memory ;)
 
-Observation: recently each GPU generation has been getting a sizeable increase in their memory size, however for some reason CSPs continue giving the same amount of CPU memory per compute node as they did with older GPUS with less memory, which leads to multiple problems and limitations. If you're a CSP reading this please consider future nodes to have at least the same amount of CPU memory as the total GPU memory of the node and then some - at least double or triple would be the best. Thank you!
+observation: recently each GPU generation has been getting a sizeable increase in their memory size, however for some reason CSPs continue giving the same amount of CPU memory per compute node as they did with older GPUS with less memory, which leads to multiple problems and limitations. If you're a CSP reading this please consider future nodes to have at least the same amount of CPU memory as the total GPU memory of the node and then some - at least double or triple would be the best. Thank you!
 
 If all you care about is the CPU peak memory report for the program you launched, you can use the ` -f '%M'` flag:
 
@@ -1238,7 +1238,7 @@ $ /usr/bin/time -f '%M' python -c "import torch" |& perl -ne 'chomp; printf "%0.
 
 You can see that it about matched "Maximum resident set size" from before.
 
-Note: the Unix memory measurements are often imprecise, because the memory management is very complex, so if you re-run this example again and again you will see slightly different results.
+note: the Unix memory measurements are often imprecise, because the memory management is very complex, so if you re-run this example again and again you will see slightly different results.
 
 Now before we can use this as a reliable measurement tool let's check if the reported RSS memory usage checks out:
 
@@ -1314,7 +1314,7 @@ $ /usr/bin/time -f '%M' sh -c 'python -c "import torch" & wait'
 ```
 It's almost identical `389416` vs `389748` - as mentioned elsewhere Linux CPU memory reporting is a very fluid thing and you're very likely to get slightly different reporting running the same command.
 
-Note: Always recalibrate your tools before making comparisons. You will see different numbers in different sections of the book for the same commands since it's likely they were run at different times with different versions on different systems.
+note: Always recalibrate your tools before making comparisons. You will see different numbers in different sections of the book for the same commands since it's likely they were run at different times with different versions on different systems.
 
 As of this writing most Unix systems have moved to cgroups v2, but it's possible to still find some older distributions that use cgroups v1. If that's the case look at older versions of `cgmemtime` since originally it was written for cgroups v1.
 
@@ -2436,7 +2436,7 @@ $ mpirun --hostfile  -np 16 -map-by ppr:8:node python my-program.py
 
 Note that I used `my-program.py` here because [torch-distributed-gpu-test.py](torch-distributed-gpu-test.py) was written to work with `torch.distributed.run` (also known as `torchrun`). With `mpirun` you will have to check your specific implementation to see which environment variable it uses to pass the rank of the program and replace `LOCAL_RANK` with it, the rest should be mostly the same.
 
-Nuances:
+nuances:
 - You might have to explicitly tell it which interface to use by adding `--mca btl_tcp_if_include 10.0.0.0/24` to match our example. If you have many network interfaces it might use one that isn't open or just the wrong interface.
 - You can also do the reverse and exclude some interfaces. e.g. say you have `docker0` and `lo` interfaces - to exclude those add `--mca btl_tcp_if_exclude docker0,lo`.
 
@@ -2677,7 +2677,7 @@ In theory enabling this variable should make everything run really slow, but in 
 
 So, yes, when you switch from async to sync nature, often it can hide some subtle race conditions, so there are times that a hanging disappears as in the example I shared above. So measure your throughput with and without this flag and sometimes it might actual not only help with getting an in-context traceback but actually solve your problem altogether.
 
-Note: [NCCL==2.14.3 coming with `pytorch==1.13` hangs](https://github.com/NVIDIA/nccl/issues/750) when `CUDA_LAUNCH_BLOCKING=1` is used. So don't use it with that version of pytorch. The issue has been fixed in `nccl>=2.17` which should be included in `pytorch==2.0`.
+note: [NCCL==2.14.3 coming with `pytorch==1.13` hangs](https://github.com/NVIDIA/nccl/issues/750) when `CUDA_LAUNCH_BLOCKING=1` is used. So don't use it with that version of pytorch. The issue has been fixed in `nccl>=2.17` which should be included in `pytorch==2.0`.
 
 
 ### segfaults and getting a backtrace from a core file
@@ -3016,7 +3016,7 @@ Now use the following `srun` command after adjusting jobid with `SLURM_JOBID` fr
 srun --jobid=2180718 --gres=gpu:0 --nodes=40 --tasks-per-node=1 --output=trace-%N.out sh -c 'ps aux | grep python | egrep -v "grep|srun" | grep `whoami` | awk "{print \$2}" | xargs -I {} py-spy dump --native --pid {}' || echo "failed"
 ```
 
-Notes:
+notes:
 - One must use `--gres=gpu:0` for the monitor `srun` or otherwise it will block until the main `srun` (the one running the training) exits.
 - Each node will generate its unique log file named `trace-nodename.out` - so this would help to identify which node(s) are problematic. You can remove `--output=trace-%N.out` if you want it all being dumped to stdout
 - In some SLURM versions you may also need to add `--overlap`
@@ -3134,7 +3134,7 @@ Now run the `py-spy` extraction command over all participating nodes:
 ds_ssh -f hostfile "source ~/.pdshrc; ps aux | grep python | grep -v grep | grep `whoami` | awk '{print \$2}' | xargs -I {} sudo py-spy dump --pid {} "
 ```
 
-Notes:
+notes:
 - Put inside `~/.pdshrc` whatever init code that you may need to run. If you don't need any you can remove `source ~/.pdshrc;` from the command line.
 - If you don't have it already `ds_ssh` is installed when you do `pip install deepspeed`.
 - you might need to `export PDSH_RCMD_TYPE=ssh` if you get `rcmd: socket: Permission denied` error

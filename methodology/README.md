@@ -1142,6 +1142,6 @@ srun ... your program
 ```
 when finished or if `salloc` timed out or got `scancel`ed - make sure to exit this bash shell (`Ctrl-d`), since otherwise it'll be populate with stale `SLURM_*` environment variables.
 
-Important: when you exit the shell it'll also revoke the job allocation if it's still running.
+important: when you exit the shell it'll also revoke the job allocation if it's still running.
 
 note: if you don't specify `bash` at the end of `salloc` you will get auto-ssh'ed into the node that got allocated via `salloc` which you might prefer instead of remaining on the original node. But it can only work with a single node. This is somewhat similar to using the `--pty` flag.
