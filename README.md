@@ -34,6 +34,25 @@ Writing about debugging in the void is very difficult and since I haven't been s
 6. **[Debugging Machine Learning Projects](https://github.com/stas00/ml-engineering/tree/master/debug)** (external)
 
 
+## Updates
+
+I announce any significant updates on my twitter channel [https://twitter.com/StasBekman](https://twitter.com/StasBekman).
+
+
+## Ebook versions of the book
+
+You can download various ebook formats of this book:
+* [PDF](https://huggingface.co/stas/the-art-of-debugging-book/resolve/main/Stas%20Bekman%20-%20The%20Art%20of%20Debugging.pdf?download=true)
+* [EPUB](https://huggingface.co/stas/the-art-of-debugging-book/resolve/main/Stas%20Bekman%20-%20The%20Art%20of%20Debugging.epub?download=true)
+
+I will try to rebuild these once in a few weeks or so, but if you want the latest ebook versions, the instructions for building are [here](build).
+
+
+## Machine Learning Engineering Open Book
+
+Make sure to also read [Machine Learning Engineering Open Book]https://github.com/stas00/ml-engineering) which has a lot of related recipes and methodologies, in the context of Machine Learning.
+
+
 
 ## Contributing
 

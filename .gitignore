@@ -11,5 +11,11 @@ __pycache__/
 *.html
 *.pdf
 chapters-html.txt
+pdf-bookmarks.txt
+
+Stas Bekman - The Art of Debugging.epub
+Stas Bekman - The Art of Debugging.pdf
 
 trash/
+the-art-of-debugging-book
+book-front.md
