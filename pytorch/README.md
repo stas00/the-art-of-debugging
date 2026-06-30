@@ -2952,6 +2952,26 @@ The very first line is where the program is stuck.
 
 If the hanging happens inside a CPP extension, add `--native` `py-spy` and it'll show the non-python code if any.
 
+If the process has multiple threads it'll show a stack trace of each thread. For example:
+
+```
+Thread 0x7F6D3C29D740 (idle): "MainThread"
+    wait (threading.py:312)
+    result (concurrent/futures/_base.py:435)
+    main (slurmeventd.py:208)
+    <module> (slurmeventd.py:217)
+Thread 0x7F6CF5FFB700 (idle): "Thread-CallbackRequestDispatcher"
+    wait (threading.py:312)
+    get (queue.py:171)
+    _get_many (pubsub_v1/subscriber/_protocol/helper_threads.py:56)
+    __call__ (pubsub_v1/subscriber/_protocol/helper_threads.py:103)
+    run (threading.py:892)
+    _bootstrap_inner (threading.py:954)
+    _bootstrap (threading.py:912)
+```
+
+`MainThread` is the main process.
+
 ##### multi-process py-spy
 
 Now, how do you do it for multiple processes. Doing it one-by-one is too slow. So let's do it at once.

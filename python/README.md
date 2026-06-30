@@ -398,78 +398,7 @@ and check that the paths are correct.
 
 `py-spy` is a great tool for diagnosing processes that either hang or spin out of control or there is an issue with a network connection, blocked IO, etc. It's similar to getting a traceback on exception, except the process is still running.
 
-First do `pip install py-spy`.
-
-Now you can attach to each process with:
-
-```bash
-py-spy dump -n -p PID
-```
-and it will tell you where the process is
-
-- `PID` is the process id of the hanging python process.
-- `-n` is useful if you want to see stack traces from python extensions written in C, C++, etc., as the program may hang in one of the extensions
-- you may need to add `sudo` before the command - for more details see [this note](https://github.com/benfred/py-spy#when-do-you-need-to-run-as-sudo).
-
-If you have no `sudo` access your sysadmin might be able to perform this for you:
-```bash
-sudo echo 0 > /proc/sys/kernel/yama/ptrace_scope
-```
-which will allow you running `py-spy` (and `strace`) without needing `sudo`. Beware of the possible [security implications](https://wiki.ubuntu.com/SecurityTeam/Roadmap/KernelHardening#ptrace_Protection) - but typically if your compute node is inaccessible from the Internet it's less likely to be a risk.
-
-To make this change permanent edit `/etc/sysctl.d/10-ptrace.conf` and set:
-```
-kernel.yama.ptrace_scope = 0
-```
-
-Here is an example of `py-spy dump` python stack trace:
-```
-Thread 835995 (active): "MainThread"
-    broadcast (torch/distributed/distributed_c10d.py:1191)
-    _aggregate_total_loss (deepspeed/runtime/pipe/engine.py:540)
-    train_batch (deepspeed/runtime/pipe/engine.py:330)
-    train_step (megatron/training.py:436)
-    train (megatron/training.py:851)
-    pretrain (megatron/training.py:187)
-    <module> (pretrain_gpt.py:239)
-```
-The very first line is where the program is stuck.
-
-If the hanging happens inside a CPP extension, add `--native` `py-spy` and it'll show the non-python code if any.
-
-If the process has multiple threads it'll show a stack trace of each thread. For example:
-
-```
-Thread 0x7F6D3C29D740 (idle): "MainThread"
-    wait (threading.py:312)
-    result (concurrent/futures/_base.py:435)
-    main (slurmeventd.py:208)
-    <module> (slurmeventd.py:217)
-Thread 0x7F6CF5FFB700 (idle): "Thread-CallbackRequestDispatcher"
-    wait (threading.py:312)
-    get (queue.py:171)
-    _get_many (pubsub_v1/subscriber/_protocol/helper_threads.py:56)
-    __call__ (pubsub_v1/subscriber/_protocol/helper_threads.py:103)
-    run (threading.py:892)
-    _bootstrap_inner (threading.py:954)
-    _bootstrap (threading.py:912)
-```
-
-`MainThread` is the main process.
-
-To run it on multiple processes at once:
-
-```bash
-pgrep python | xargs -I {} py-spy dump --pid {}
-```
-
-If you want only subprocesses, e.g. to skip the launcher process:
-
-```bash
-pgrep -P $(pgrep -o python) | xargs -I {} py-spy dump --pid {}
-```
-
-You can also read about how to run it on multiple nodes [here](https://github.com/stas00/ml-engineering/blob/master/debug/torch-distributed-hanging-solutions.md#py-spy).
+It's covered in depth, with worked examples and multi-process/multi-node recipes, in the PyTorch chapter - see [py-spy](../pytorch/README.md#py-spy). While the examples there use PyTorch, the tool and the techniques apply to any Python program.
 
 ## Profilers
 
