@@ -795,6 +795,6 @@ way1=0.031605484895408154
 way2=0.06159617658704519
 ```
 
-Which gives us yet another outcome, here `math.pow` is only about 2x slower than `**`. I suppose mixing profiling
+Which gives us yet another outcome, here `math.pow` is only about 2x slower than `**`.
 
 One thing to observe here is that 3 different measurement approaches give very different results. Since the optimization work is newer versions relative to previous versions performance, it probably doesn't matter as long as you consistently use the same method.

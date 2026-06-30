@@ -90,8 +90,6 @@ Of course, this saves costs as well. And reduces carbon footprint.
 
 This also allows you to develop locally on your desktop/laptop w/o you needing the complication of a remote server. If you have a powerful recent CPU, you might not even need the GPU. If you can't have a GPU in your laptop - get an eGPU.
 
-footnote: as long as you're not a Mac user, who as I understand simply can't have a GPU as of this writing not in their laptop nor even use an eGPU.
-
 footnote: I was able to get a [PCIe version of A100 working in my desktop](https://stasosphere.com/entrepreneur-being/262-getting-nvidia-a100-80gb-pcie-to-work-on-a-consumer-motherboard-with-custom-water-cooling/). I was hoping that I could use [Multi-Instance GPU](https://www.nvidia.com/en-us/technologies/multi-instance-gpu/) in which case I could emulate 7 tiny GPUs and be able to debug multi-node setups, but alas NCCL doesn't support that. But still I do pretty much most of development locally on my desktop, using a powerful GUI debugger in [PyCharm](https://www.jetbrains.com/help/pycharm/) because I use tiny models. But won't it be amazing to be able to emulate a full compute node on a desktop computer except with tiny gpus?
 
 ### Debugging with large payloads
@@ -126,14 +124,14 @@ tokenizer = AutoTokenizer.from_pretrained(mname)
 
 At this point the model is loaded into the memory and now we can query it:
 ```
-query = "Winter follows autums"
+query = "Winter follows autumn"
 model_inputs = tokenizer([query], return_tensors="pt")
 generated_ids = model.generate(**model_inputs)
 tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
 ```
 This prints:
 ```
-Out[2]: 'Winter follows autums from the late 1960s to the early 1970s. The film is based on'
+Out[2]: 'Winter follows autumn from the late 1960s to the early 1970s. The film is based on'
 ```
 and now you can modify the query and rerun:
 ```
