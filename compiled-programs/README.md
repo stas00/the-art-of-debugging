@@ -561,7 +561,7 @@ And you can also see `__libc_start_main@GLIBC_2.34` which is not defined. So let
 ```bash
 $ ldd ./dl2
         linux-vdso.so.1 (0x00007fffeaacd000)
-        /the-art-of-debugging/c/dl2/libmyutil.so (0x00007fdd5a150000)
+        /the-art-of-debugging/compiled-programs/dl2/libmyutil.so (0x00007fdd5a150000)
         libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fdd59ef0000)
         /lib64/ld-linux-x86-64.so.2 (0x00007fdd5a15c000)
 
@@ -625,7 +625,7 @@ footnote: `8.6.0` version is deciphered as major=8, minor=6, patch=0
 
 If I list those libraries:
 ```bash
-ls - l/usr/lib/x86_64-linux-gnu/libcrypto++*
+ls -l /usr/lib/x86_64-linux-gnu/libcrypto++*
 lrwxrwxrwx 1 root root   20 Mar 24  2020 /usr/lib/x86_64-linux-gnu/libcrypto++.so.6 -> libcrypto++.so.6.0.0
 -rw-r--r-- 1 root root 3.8M Mar 24  2020 /usr/lib/x86_64-linux-gnu/libcrypto++.so.6.0.0
 lrwxrwxrwx 1 root root   20 Dec 19  2021 /usr/lib/x86_64-linux-gnu/libcrypto++.so.8 -> libcrypto++.so.8.6.0

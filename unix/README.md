@@ -142,7 +142,7 @@ Let's turn the execution tracer on by adding `set -x`:
 $ cat << "EOT" > test.sh
 #!/bin/bash
 set -x
-x=
+x=5
 y=$(($x+5))
 sleep 5
 EOT
@@ -526,7 +526,7 @@ any std streams will get saved in `nohup.out`, as `nohup` will pipe `stderr` int
 So you may want to redirect it to a log file of your liking:
 
 ```bash
-nohup ./long-running-command log.txt &
+nohup ./long-running-command > log.txt &
 ```
 
 ## make
