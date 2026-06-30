@@ -251,9 +251,7 @@ NameError: name 'die' is not defined. Did you mean: 'dir'?
 
 So here we can immediately see that it was `b()` that called `a()` and the right `a()` was called (the one I was editing) and not in some other file or virtual environment.
 
-You could have used any other non-python command-like word as long as it doesn't break the syntax, because we want python to actually run the program.
-
-footnote: `die` comes from Perl, where it works like `assert` so I find it a good fit - but of course choose your own.
+The `die` trick - why any non-Python word works as the "break", and where the name comes from - is explained in [Am I editing the right file and the right class?](../methodology/README.md#am-i-editing-the-right-file-and-the-right-class).
 
 `traceback.print_stack()` is another way to check the right code path was chosen or to discover the callers, since in complex code bases the same function can be called by very different code branches.
 
