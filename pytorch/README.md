@@ -213,7 +213,7 @@ Once your code is working, do switch to the real model to test the quality of yo
 
 Important: given their popularity and the well designed simple API I will be discussing HF [`transformers`](https://github.com/huggingface/transformers/) models. But the same principle can be applied to any other model.
 
-TLDR: it's trivial to make a tiny HF `transformers` model:
+tldr: it's trivial to make a tiny HF `transformers` model:
 
 1. Fetch the config object of a full size model
 2. Shrink the hidden size and perhaps a few other parameters that contribute to the bulk of the model

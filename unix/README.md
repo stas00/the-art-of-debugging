@@ -95,7 +95,7 @@ While the instructions use Bash If you use a different shell a lot of the sugges
 
 ### Controlling script execution
 
-TLDR: Most of the time it's the best to start Bash scripts with:
+tldr: Most of the time it's the best to start Bash scripts with:
 
 ```bash
 #!/bin/bash

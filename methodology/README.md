@@ -560,13 +560,13 @@ echo this is time; date
 
 If a program can be reduced to a single line that can be copy-n-pasted into the command prompt and immediately executed you have a one-liner.
 
-Use case: an import failing - move it into a single import one liner. For example, if you have `import torch` failing, test it standalone:
+case study: an import failing - move it into a single import one liner. For example, if you have `import torch` failing, test it standalone:
 
 ```bash
 python -c "import torch"
 ```
 
-Use case: a large program failing due to a model or tokenizer or config loading failing after a sizeable overhead of loading other things. Move that failing component out into a one-liner and test it alone. One common example is when you use a private HF hub repo and you are missing an auth token and you want to debug that. Let's move it into a one liner:
+case study: a large program failing due to a model or tokenizer or config loading failing after a sizeable overhead of loading other things. Move that failing component out into a one-liner and test it alone. One common example is when you use a private HF hub repo and you are missing an auth token and you want to debug that. Let's move it into a one liner:
 
 ```bash
 python -c 'import sys; from transformers import AutoModel; AutoModel.from_pretrained(sys.argv[1])' t5-small
@@ -826,11 +826,11 @@ The discussed next approach should work for any revision control system that sup
 
 `git bisect` helps to quickly find the commit that caused a certain problem.
 
-Use case: Say, you were using `transformers==4.33.0` and then you needed a more recent feature so you upgraded to the bleed-edge `transformers@main` and your code broke. There could have been hundreds of commits between the two versions and it'd be very difficult to find the right commit that lead to the breakage by going through all the commits. Here is how you can quickly find out which commit was the cause.
+case study: Say, you were using `transformers==4.33.0` and then you needed a more recent feature so you upgraded to the bleed-edge `transformers@main` and your code broke. There could have been hundreds of commits between the two versions and it'd be very difficult to find the right commit that lead to the breakage by going through all the commits. Here is how you can quickly find out which commit was the cause.
 
 footnote: HuggingFace Transformers is actually pretty good at not breaking often, but given its complexity and enormous size it happens nevertheless and the problems are fixed very quickly once reported. Since it's a very popular Machine Learning library it makes for a good debugging use case.
 
-Solution: Bisecting all the commits between the known good and bad commits to find the one commit that's to blame.
+solution: Bisecting all the commits between the known good and bad commits to find the one commit that's to blame.
 
 We are going to use 2 shell terminals: A and B. Terminal A will be used for `git bisect` and terminal B for testing your software. There is no technical reason why you couldn't get away with a single terminal but it's easier with 2.
 
