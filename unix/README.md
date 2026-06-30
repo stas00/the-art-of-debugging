@@ -1,9 +1,10 @@
 # Unix Tools for Debugging
 
+## Shell environment
 
-## Terminal
+### Terminal
 
-### Searching terminal's output
+#### Searching terminal's output
 
 Teeing all outputs to `| tee -a log` allows you to later search the outputs, but there are times when you want to search the outputs dumped to the terminal. Therefore it's critical to use a terminal (console) that allows you to search it.
 
@@ -25,7 +26,7 @@ At other times I don't `clear`, since I do want to search previous results.
 
 
 
-### Being able to copy-n-paste multi-lines
+#### Being able to copy-n-paste multi-lines
 
 At times I copy-n-paste multiple commands that include new line separators. I wanted this to work correctly and therefore I have this in my `~/.inputrc`:
 ```
@@ -36,9 +37,7 @@ This setting allows new line copied with the command being pasted instead of mak
 
 footnote: `man bash` for more information and if you're using a different shell check its manpage for the equivalent setting.
 
-
-
-## Informative prompt
+### Informative prompt
 
 Having a powerful shell prompt is extremely useful for quick debugging. You're certainly used to the `user@host /some/path/`, but it can do so much more.
 
@@ -87,10 +86,6 @@ if [ -f "$HOME/.bash-git-prompt/gitprompt.sh" ]; then
 fi
 ```
 and start a new Bash. Remove the line with "Stas" if you want to use the default theme instead.
-
-
-
-
 
 ## Bash
 
@@ -382,11 +377,6 @@ prep
 
 As you can see the broken command on line 5 didn't abort the script, due to `set +e`, but the one at line 7 did, due to `set -e`.
 
-
-
-
-
-
 ## strace
 
 (note-to-self: the true source of this is https://github.com/stas00/ml-engineering/blob/master/debug/pytorch.md#strace)
@@ -521,8 +511,6 @@ But if you want separate logs per process, then use `-ff` instead of `-f`.
 
 The `strace` manpage has a ton of other useful options.
 
-
-
 ## nohup
 
 If you need to connect to a remote server launch a command and either logout or let the connection timeout, normally the command will get terminated upon exit.
@@ -540,8 +528,6 @@ So you may want to redirect it to a log file of your liking:
 ```bash
 nohup ./long-running-command log.txt &
 ```
-
-
 
 ## make
 

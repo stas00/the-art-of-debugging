@@ -1,7 +1,6 @@
 # Debugging Python Programs
 
-
-## Print-based Debug Techniques And Tools
+## Print-based techniques
 
 ### q
 
@@ -216,9 +215,79 @@ x=5, y=6
 
 So once again you can see that atomic operations are ideal for fruitful debugging.
 
+### Who is calling?
+
+Everybody knows that when a Python program crashes a stack trace (traceback) is printed and that's how we know where to fix things.
+
+But how do you go about discovering whether what you're working on gets actually called and don't get a false impression that everything works, when in reality it's just hasn't been called. A common use case of this is when dealing with multiple copies of the same code - e.g. multiple virtual environments or git repo clones. I use a quick and dirty solution. I add `die` to the code:
+
+```
+$ cat << EOT > test.py
+def a():
+    print("a was called")
+    die
+def b(): a()
+def c(): a()
+b()
+EOT
+
+$ python test.py
+```
+
+gives us:
+
+```
+a was called
+Traceback (most recent call last):
+  File "/test.py", line 6, in <module>
+    b()
+  File "/test.py", line 4, in b
+    def b(): a()
+             ^^^
+  File "/test.py", line 3, in a
+    die
+NameError: name 'die' is not defined. Did you mean: 'dir'?
+```
+
+So here we can immediately see that it was `b()` that called `a()` and the right `a()` was called (the one I was editing) and not in some other file or virtual environment.
+
+You could have used any other non-python command-like word as long as it doesn't break the syntax, because we want python to actually run the program.
+
+footnote: `die` comes from Perl, where it works like `assert` so I find it a good fit - but of course choose your own.
+
+`traceback.print_stack()` is another way to check the right code path was chosen or to discover the callers, since in complex code bases the same function can be called by very different code branches.
 
 
-## Ensuring The Python Package You Edit Is The One That Is Run
+```
+$ cat << EOT > test.py
+import traceback
+def a():
+    traceback.print_stack()
+    print("a was called")
+def b(): a()
+def c(): a()
+b()
+EOT
+
+$ python test.py
+```
+
+gives us:
+```
+python test.py
+  File "/test.py", line 7, in <module>
+    b()
+  File "/test.py", line 5, in b
+    def b(): a()
+  File "/test.py", line 3, in a
+    traceback.print_stack()
+a was called
+```
+So again, you can see that it was `b()` that called `a()`. But here the program continued running, which often is undesirable since if there are many logs it might be tricky to find the traceback's output. That's why my personal preference is the `die` solution above.
+
+## Running the code you think you are running
+
+### Ensuring The Python Package You Edit Is The One That Is Run
 
 If you're modifying a git repository of a Python package and then installing into a virtual environment this could be a very error-prone process since you are never sure if you reinstalled the modified files or not when you test things. And that's why instead of using `pip install .` it's much better to use `pip install -e .` which instead of installing the Python files into the virtual environment, tells the latter to access the files from the git clone (or whatever other way the source code is made available). For example, if you're working on HF transformers, here is how to do it better:
 ```
@@ -286,8 +355,7 @@ in this example I'm continuing the situation with HF `transformers` where `src` 
 
 2. You can use the [purposefully break the script approach](../methodology/README.md#am-i-editing-the-right-file-and-the-right-class) to validate that the files you're editing are the files that actually get loaded.
 
-
-## Setting up your test suite to always use the git repo's Python packages
+### Setting up your test suite to always use the git repo's Python packages
 
 If your test suite relies on the package it tests being preinstalled you are likely to be testing the wrong files. This is usually less of a problem when the git package places the Python packages at the root directory of the repo, but when a project is structured like HF `transformers` where Python packages are placed under `src` or another top-level subdir Python will not find these packages. Also if you launch the tests not from the repo's root directory it'll always fail to find your repo's packages.
 
@@ -324,8 +392,9 @@ print("\n".join(sys.path))
 ```
 and check that the paths are correct.
 
+## Diagnosing hangs
 
-## py-spy
+### py-spy
 
 `py-spy` is a great tool for diagnosing processes that either hang or spin out of control or there is an issue with a network connection, blocked IO, etc. It's similar to getting a traceback on exception, except the process is still running.
 
@@ -401,78 +470,6 @@ pgrep -P $(pgrep -o python) | xargs -I {} py-spy dump --pid {}
 ```
 
 You can also read about how to run it on multiple nodes [here](https://github.com/stas00/ml-engineering/blob/master/debug/torch-distributed-hanging-solutions.md#py-spy).
-
-
-## Who is calling?
-
-Everybody knows that when a Python program crashes a stack trace (traceback) is printed and that's how we know where to fix things.
-
-But how do you go about discovering whether what you're working on gets actually called and don't get a false impression that everything works, when in reality it's just hasn't been called. A common use case of this is when dealing with multiple copies of the same code - e.g. multiple virtual environments or git repo clones. I use a quick and dirty solution. I add `die` to the code:
-
-```
-$ cat << EOT > test.py
-def a():
-    print("a was called")
-    die
-def b(): a()
-def c(): a()
-b()
-EOT
-
-$ python test.py
-```
-
-gives us:
-
-```
-a was called
-Traceback (most recent call last):
-  File "/test.py", line 6, in <module>
-    b()
-  File "/test.py", line 4, in b
-    def b(): a()
-             ^^^
-  File "/test.py", line 3, in a
-    die
-NameError: name 'die' is not defined. Did you mean: 'dir'?
-```
-
-So here we can immediately see that it was `b()` that called `a()` and the right `a()` was called (the one I was editing) and not in some other file or virtual environment.
-
-You could have used any other non-python command-like word as long as it doesn't break the syntax, because we want python to actually run the program.
-
-footnote: `die` comes from Perl, where it works like `assert` so I find it a good fit - but of course choose your own.
-
-`traceback.print_stack()` is another way to check the right code path was chosen or to discover the callers, since in complex code bases the same function can be called by very different code branches.
-
-
-```
-$ cat << EOT > test.py
-import traceback
-def a():
-    traceback.print_stack()
-    print("a was called")
-def b(): a()
-def c(): a()
-b()
-EOT
-
-$ python test.py
-```
-
-gives us:
-```
-python test.py
-  File "/test.py", line 7, in <module>
-    b()
-  File "/test.py", line 5, in b
-    def b(): a()
-  File "/test.py", line 3, in a
-    traceback.print_stack()
-a was called
-```
-So again, you can see that it was `b()` that called `a()`. But here the program continued running, which often is undesirable since if there are many logs it might be tricky to find the traceback's output. That's why my personal preference is the `die` solution above.
-
 
 ## Profilers
 
@@ -801,4 +798,3 @@ way2=0.06159617658704519
 Which gives us yet another outcome, here `math.pow` is only about 2x slower than `**`. I suppose mixing profiling
 
 One thing to observe here is that 3 different measurement approaches give very different results. Since the optimization work is newer versions relative to previous versions performance, it probably doesn't matter as long as you consistently use the same method.
-
