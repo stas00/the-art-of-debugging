@@ -5,6 +5,7 @@ Outputs:
   - The-Art-of-Debugging-book-cover-1536x2304.png : full-resolution flat cover
   - The-Art-of-Debugging-book-cover.png           : optimized display image (503x754)
   - The-Art-of-Debugging-book-cover-200x300.png   : small thumbnail (size in name)
+  - The-Art-of-Debugging-book-cover.pdf           : vector PDF (sharp text, art embedded)
   - The-Art-of-Debugging-book-cover.svg           : self-contained, each text section
                                                     is its own Inkscape layer (editable)
   - The-Art-of-Debugging-book-cover.ora           : OpenRaster; opens in GIMP/Krita with
@@ -120,6 +121,14 @@ def render(svg_text: str, out_png: pathlib.Path):
     pathlib.Path(tmp).unlink()
 
 
+def render_pdf(svg_path: pathlib.Path, out_pdf: pathlib.Path):
+    """Vector PDF from the master SVG: crisp text, art embedded as raster."""
+    subprocess.run(
+        ["rsvg-convert", "-f", "pdf", "-o", str(out_pdf), str(svg_path)],
+        check=True,
+    )
+
+
 def svg_open() -> str:
     return (
         '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n'
@@ -222,6 +231,8 @@ def main():
         svg = write_master_svg(bg)
         png_full = IMAGES / f"{STEM}-1536x2304.png"
         render(svg.read_text(), png_full)
+        pdf = IMAGES / f"{STEM}.pdf"
+        render_pdf(svg, pdf)
         ora = build_ora(bg, png_full)
         png_small = IMAGES / f"{STEM}.png"
         optimize_small(png_full, png_small, "548x754")
@@ -237,7 +248,7 @@ def main():
             png_thumb.unlink()
         thumb_tmp.rename(png_thumb)
 
-    for p in (png_small, png_thumb, png_full, svg, ora):
+    for p in (png_small, png_thumb, png_full, pdf, svg, ora):
         print(f"wrote images/{p.name} ({p.stat().st_size} bytes)")
 
 
