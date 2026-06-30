@@ -50,7 +50,7 @@ I will try to rebuild these once in a few weeks or so, but if you want the lates
 
 ## Machine Learning Engineering Open Book
 
-Make sure to also read [Machine Learning Engineering Open Book]https://github.com/stas00/ml-engineering) which has a lot of related recipes and methodologies, in the context of Machine Learning.
+Make sure to also read [Machine Learning Engineering Open Book](https://github.com/stas00/ml-engineering) which has a lot of related recipes and methodologies, in the context of Machine Learning.
 
 
 
