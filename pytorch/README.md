@@ -55,7 +55,7 @@ python -c 'import sys; from transformers import AutoModelForCausalLM; \
 AutoModelForCausalLM.from_pretrained(sys.argv[1])' ./Qwen3-30B-A3B-Instruct-2507
 ```
 Please make sure that you load the locally cloned version, that is:
-```
+```diff
 - ... from_pretrained("Qwen/Qwen3-30B-A3B-Instruct-2507")
 + ... from_pretrained("./Qwen3-30B-A3B-Instruct-2507")
 ```
@@ -84,7 +84,7 @@ m=AutoModelForCausalLM.from_config(c)' Qwen/Qwen3-30B-A3B-Instruct-2507
 This approach is most useful if you need to deal with multiple models of the same architecture and you don't want to modify the end user code.
 
 First we clone HF Transformers and install its editable version:
-```
+```bash
 git clone https://github.com/huggingface/transformers/tree/main/src/transformers
 cd transformers
 pip install -e .[dev]
@@ -252,7 +252,7 @@ Also please note that you don't need any GPUs to do that and you could do this e
 
 Before modifying the config you can dump the original parameters and choose to shrinks more dimensions. For example, using less layers makes it even smaller and easier to debug. So here is what you can do instead:
 
-```
+```python
 config.update(dict(
     d_model=64,
     d_ff=256,
@@ -273,7 +273,7 @@ config.perceiver_config
 config.vision_config
 ```
 If you wanted to shrink this model you'd want to update `config` and `config.vision_config` with smaller values:
-```
+```python
 config.update(dict(
     hidden_size=64,
     intermediate_size=37,
@@ -290,7 +290,7 @@ See [idefics-make-tiny-model.py](tiny-scripts/idefics-make-tiny-model.py) for a 
 
 We can then further halve our tiny model size by converting the model to fp16 or bf16 (depending on the goal) before saving it:
 
-```
+```python
 very_small_model.half() # convert to fp16
 #very_small_model.bfloat16() # convert to bf16
 very_small_model.save_pretrained(mname_very_small)
@@ -400,7 +400,7 @@ new_tokenizer.save_pretrained("small-tokenizer")
 which is almost perfect, except it now doesn't have any information about the frequency for each word/char (that's how most tokenizers compute their vocab, which if you need this info you can fix by
 having each key appearing `len(vocab) - ID times`, i.e.:
 
-```
+```python
 training_corpus = [ (k for i in range(vocab_len-v)) for k,v in vocab.items() ]
 ```
 which will make the script much much longer to complete.
@@ -1042,7 +1042,7 @@ Now that we know what each column stands for let's analyze the output of the pro
 If you look at the `NV` column you can see the gpu was already using 0.59GB of memory, even though no tensor has been allocated yet. This is because CUDA loads compute kernels the first time you call `import torch` - note that `torch.cuda` is not reporting that! all its columns are zeros.
 
 Then we execute:
-```
+```python
     t1 = torch.zeros(100000,10000, device=device)
     t2 = torch.zeros(100000,10000, device=device)
     del t2
@@ -1061,7 +1061,7 @@ So we can that `MA` is half of `Max_MA` - because we had 2 tensors of the same s
 
 The `CA` and `MaxCA` columns report cached memory, I often find those not very useful for memory debug purposes, I sometimes even add:
 
-```
+```python
 torch.cuda.empty_cache()
 ```
 
@@ -1074,7 +1074,7 @@ But caching will lead to `nvidia-smi` or the `NV` column in this report to repor
 What happened here is most likely PyTorch `torch.zero` call loaded some additional CUDA kernels which took another half GB of GPU memory (again unaccounted for). `torch.distributed` with NCCL is another large source of "lost" GPU memory.
 
 Next, we copy one tensor to cpu memory:
-```
+```python
     c1 = t1.cpu()
 ```
 which gives us:
@@ -1119,7 +1119,7 @@ we can see that CPU memory report went back to numbers which are very close to t
 The CUDA memory caches are still there as can be seen from `CA` and `Max_CA` columns, and `NV` reflects that plus some other non-CUDA allocation as discussed earlier.
 
 If at the very end we add:
-```
+```python
 torch.cuda.empty_cache()
 see_memory_usage("after empty cache", force=True)
 ```
@@ -1136,7 +1136,7 @@ But the interesting other number here is `NV 1.19 GB` which tells us that there 
 
 You can't imagine how often I use this debug utility in my day-to-day work.  Every so often I sprinkle these calls around the strategic places I suspect and start mapping out block by block and then narrowing down to the suspect areas. Foe example, one useful use case is to run this report before `forward`, `backward` and `step` and observe if each training iteration leaks a bit of memory and where:
 
-```
+```python
     see_memory_usage("before fwd", force=True)
     output = model(**inputs)
     see_memory_usage("before bwd", force=True)
@@ -1308,7 +1308,7 @@ group_mem_high:     206520 KiB
 As you can see it reports both the time and the peak memory usage.
 
 Let's compare with `/usr/bin/time`:
-```
+```bash
 $ /usr/bin/time -f '%M' sh -c 'python -c "import torch" & wait'
 389748
 ```
@@ -1927,7 +1927,7 @@ torch.Size([2, 3])
 ```
 
 It's also super handy for getting various model dimensions, you're often likely to see code like this:
-```
+```python
 batch_size, seqlen, hidden_size = hidden_states.shape
 batch_size = hidden_states.shape[0]
 ```
@@ -1968,7 +1968,7 @@ There are various devices depending on the hardware you use, `cpu` is always the
 if there are multiple devices of the same type, they can be indexed in via the `:index` - for example, `cuda:2` - typically means the 3rd gpu (though `CUDA_VISIBLE_DEVICES` environment variable can alter the physical order of GPUs).
 
 Probably the most common line in ML code you have seen is:
-```
+```python
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ```
 which automatically picks the first gpu if it's available otherwise falls back to cpu.
@@ -2067,7 +2067,7 @@ data_ptr=483278528     # a unique data pointer in the memory
 I annotated each attribute in the output if you're not familiar with some of those attributes.
 
 If you do a lot of comparisons, a one liner format would be easier to work with - we just set `formatted=False` or remove it altogether as it's the default value:
-```
+```python
 print(get_tensor_metadata(x, "x"))
 x:, device=cpu, dtype=torch.float16, shape=torch.Size([2]), numel=2,
 requires_grad=False, grad=None, stride=(1,),
@@ -3287,7 +3287,7 @@ and you should see:
 ```
 as you will see in the example I set:
 
-```
+```python
             packages_to_include=["PIL"],
 ```
 so it'll trace `PIL` plus anything that is not under `site-packages`. If you need to trace another package, just add it to that list.
@@ -3392,7 +3392,7 @@ If on Ubuntu by default it sends core files to `apport`, which may save the core
 `/var/crash`. But you can change it explained above.
 
 A quick way to test if your setup can generate a core file is:
-```
+```bash
 sleep 10 &
 killall -SIGSEGV sleep
 ```
@@ -3412,7 +3412,7 @@ for i, d in enumerate(data):
 it's possible that one process hangs in the first iteration, and another process in the second iteration, which makes things very confusing. But the stack trace won't give such indication, as the line numbers would be the same, even though the processes aren't in the same place code progression-wise.
 
 In such situations unroll the loop to be:
-```
+```python
 d_iter = iter(data)
 some_hanging_call(next(d_iter)
 some_hanging_call(next(d_iter)
@@ -3731,7 +3731,7 @@ wallclock duration: 228.978 msecs
 I trimmed out most of the profiling report to show just the relevant for this discussion parts.
 
 Now why does the first forward call takes much longer than PyTorch's `forward` call? Is it because something happens that is not PyTorch related? So let's use the same script but switch from `torch.profile` to `cProfile`, but just editing the script to:
-```
+```python
 PROFILER_TYPE = "c"
 #PROFILER_TYPE = "torch"
 ```

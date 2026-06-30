@@ -423,7 +423,7 @@ Inside util_a()
 And now the program was able to run.
 
 When using the approach of setting the environment variable or several of them with the command being executed:
-```
+```bash
 ENV1=foo ENV2=bar ./my_program
 ```
 only that program will see this exact setting. When that program exits other programs will see the value of these environment variables as they were before the last run.
@@ -466,7 +466,7 @@ function add_to_LD_LIBRARY_PATH {
 ```
 
 Now to add `.` to it, just run:
-```
+```bash
 add_to_LD_LIBRARY_PATH .
 ```
 This is useful for when you script things, as you never know what was set before your script was run. I use this functionality in my `~/.bash_profile`.
@@ -658,18 +658,18 @@ a bug report [undefined symbol curandCreateGenerator for torch extensions](https
 Let's introduce the `LD_PRELOAD` environment variable, which has multiple purposes, but which can also be used to ensure that the exact desired shared library is loaded, typically when there are multiple libraries with the same name in the library search path. Most of the time this is used as a workaround, since properly packaged distributed shared libraries should already do the right thing.
 
 Following the listing in the previous section, you can force the use of `libnvvm.so` version from `cuda-11.7` with:
-```
+```bash
 LD_PRELOAD=/usr/local/cuda-11.7/nvvm/lib64/libnvvm.so.4.0.0 myprogram
 ```
 or from `cuda-12.2` with:
-```
+```bash
 LD_PRELOAD=/usr/local/cuda-12.2/nvvm/lib64/libnvvm.so.4.0.0 myprogram
 ```
 
 footnote: the main use of this environment variable is to intentionally override various APIs. The APIs loaded via this environment variable take precedence over the same APIs loaded by other shared libraries.
 
 If you need to pass multiple paths, it expects these to be `:`-separated, like `LD_LIBRARY_PATH`, as in:
-```
+```bash
 LD_PRELOAD="/path/to/libfoo.so:/path/to/libbar.so" myprogram
 ```
 

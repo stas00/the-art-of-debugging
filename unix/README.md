@@ -16,7 +16,7 @@ If you use [`tmux`](https://github.com/tmux/tmux) `Ctrl-b->[` will enter scrollb
 
 Since multiple runs of the same program may produce different outputs it may be confusing to search the terminal outputs since it's hard to tell which is which. In this situation, I call `clear` which clears all outputs in the terminal, before invoking a new command. So that my debug cycle looks like:
 
-```
+```bash
 clear; ./myprogram --args ...
 ```
 So that it's atomic and I never forget to clear the screen. Then the searchable output is always of the last run.
@@ -29,7 +29,7 @@ At other times I don't `clear`, since I do want to search previous results.
 #### Being able to copy-n-paste multi-lines
 
 At times I copy-n-paste multiple commands that include new line separators. I wanted this to work correctly and therefore I have this in my `~/.inputrc`:
-```
+```bash
 set enable-bracketed-paste Off
 ```
 
@@ -78,7 +78,7 @@ wget https://raw.githubusercontent.com/stas00/the-art-of-debugging/master/unix/b
 You way want to inspect [Stas.bgptheme](bash-git-prompt/Stas.bgptheme) first to see that I'm not injecting something into your environment.
 
 and when you're happy add this to your `~/.bashrc`:
-```
+```bash
 if [ -f "$HOME/.bash-git-prompt/gitprompt.sh" ]; then
     export GIT_PROMPT_ONLY_IN_REPO=0;
     export GIT_PROMPT_THEME="Stas"

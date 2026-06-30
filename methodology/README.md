@@ -109,13 +109,13 @@ pip install transformers
 ```
 
 Next launch it:
-```
+```bash
 ipython
 ```
 
 Now for example let's load a large model and its tokenizer once and then re-run your debug code on it multiple times:
 
-```
+```python
 from transformers import AutoModelForCausalLM, AutoTokenizer
 mname = "gpt2"
 model = AutoModelForCausalLM.from_pretrained(mname)
@@ -123,7 +123,7 @@ tokenizer = AutoTokenizer.from_pretrained(mname)
 ```
 
 At this point the model is loaded into the memory and now we can query it:
-```
+```python
 query = "Winter follows autumn"
 model_inputs = tokenizer([query], return_tensors="pt")
 generated_ids = model.generate(**model_inputs)
@@ -134,7 +134,7 @@ This prints:
 Out[2]: 'Winter follows autumn from the late 1960s to the early 1970s. The film is based on'
 ```
 and now you can modify the query and rerun:
-```
+```python
 query = "The best movies are"
 model_inputs = tokenizer([query], return_tensors="pt")
 generated_ids = model.generate(**model_inputs)
@@ -314,7 +314,7 @@ For the recipes I use real urls, tags, files, so that I know exactly what is mea
 
 Here is a snippet from the PyTorch cheatsheet:
 
-```
+```python
 # create a tensor
 # torch.tensor - ***always copies data!***
 # torch.tensor(x) is equivalent to x.clone().detach() if x is a tensor
@@ -705,7 +705,7 @@ mkdir ~/ramdisk
 sudo mount -t tmpfs -o size=1G,user,mode=1777 tmpfs ~/ramdisk
 ```
 Step 2. run the application, .e.g., `myprogram`:
-```
+```bash
 TMPDIR=~/ramdisk myprogram
 ```
 
@@ -809,7 +809,7 @@ Step 2. Run your program that you want to test how it performs with just 3GB of 
 You can also copy the code from the one-liner into the beginning of your program, but it's easier to keep the separated so that your program remains clean of debug code.
 
 And how was the memory pre-allocated? Using a simple `torch.ones` allocator. For example here is how you can pre-allocate 10GB of GPU memory:
-```
+```python
 import torch
 n=10
 x = torch.ones((n*2**18)).cuda().contiguous()
@@ -1009,13 +1009,13 @@ footnote: If you use the HF hub - it allows bundling modeling code with the mode
 
 So my approach to quick discovery of the right file is very simple. I purposefully break the file I think I should be editing. That is if I have a file with code like:
 
-```
+```python
 def main():
     x = 5
     y = 6
 ```
 and I know `main` is called, I add `die`:
-```
+```python
 def main():
     die
     x = 5
@@ -1086,12 +1086,12 @@ One can also use the `git commit` approach where each variation is committed and
 
 At other times using an environment variable can accomplish a similar things, so here you'd do:
 
-```
+```bash
 SOME_FLAG=exp1 python myprogram.py
 SOME_FLAG=exp2 python myprogram.py
 ```
 if you wrote the program to choose a different code path depending on the value of `SOME_FLAG`. And I'm stressing again that we want:
-```
+```bash
 SOME_FLAG=exp1 python myprogram.py
 ```
 and not:
@@ -1117,7 +1117,7 @@ For example, PyTorch uses CUDA which has a lot of its operations executed in asy
 
 Luckily there is a little known environment variable `CUDA_LAUNCH_BLOCKING`, which when set turns the async nature off and suddenly on the same trigger you get a nice Python traceback which tells you exactly what the problem is and then it's trivial to fix. To activate it just do:
 
-```
+```bash
 CUDA_LAUNCH_BLOCKING=1 python myprogram.py
 ```
 
