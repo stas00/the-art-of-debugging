@@ -1,6 +1,6 @@
 # usage: make help
 
-.PHONY: help spell html pdf checklinks clean
+.PHONY: help spell prep-html-files html html-local pdf epub upload check-links-local check-links-all clean
 .DEFAULT_GOAL := help
 
 help: ## this help
@@ -21,11 +21,28 @@ html-local: prep-html-files ## make html version w/ scripts remaining local
 	python build/mdbook/md-to-html.py --local
 
 pdf: html ## make pdf version (from html files)
-	prince --no-author-style -s build/prince_style.css --pdf-title="Stas Bekman - Machine Learning Engineering ($$(date))" -o "Stas Bekman - Machine Learning Engineering.pdf" $$(cat chapters-html.txt | tr "\n" " ")
+	prince --no-author-style -s build/prince_style.css --pdf-title="Stas Bekman - The Art of Debugging ($$(date))" -o out1.pdf $$(cat chapters-html.txt | tr "\n" " ")
+	pdftk out1.pdf dump_data output pdf-bookmarks.txt
+	pdftk out1.pdf cat 2-end 1 output out2.pdf
+	pdftk images/The-Art-of-Debugging-book-cover.pdf out2.pdf output out3.pdf
+	pdftk out3.pdf update_info pdf-bookmarks.txt output "Stas Bekman - The Art of Debugging.pdf"
 
-pdf-upload: pdf ## upload pdf to the hub
-	cp "Stas Bekman - The Art of Debugging.pdf" ml-engineering-book/
-	cd ml-engineering-book/ && git commit -m "new version" "Stas Bekman - The Art of Debugging.pdf" && git push
+epub: html ## make epub version (from html files)
+	python build/mdbook/preprocess-html-for-epub.py && \
+	pandoc --from html --to epub3 \
+		--output "Stas Bekman - The Art of Debugging.epub" \
+		--metadata title="The Art of Debugging" \
+		--metadata author="Stas Bekman" \
+		--metadata date="$$(date +%Y-%m-%d)" \
+		--metadata language="en" \
+		--epub-cover-image=imagesThe-Art-of-Debugging-book-cover.png \
+		--resource-path=.:$$(cat chapters-html.txt | xargs -n1 dirname | awk '!seen[$$0]++' | tr "\n" ":") \
+		$$(cat chapters-html.txt | tr "\n" " ")
+
+upload: pdf epub ## upload pdf to the hub
+	cp "Stas Bekman - The Art of Debugging.pdf" the-art-of-debugging-book/
+	cp "Stas Bekman - The Art of Debugging.epub" the-art-of-debugging-book/
+	cdthe-art-of-debugging-book/ && git commit -m "new version" "Stas Bekman - The Art of Debugging.pdf" "Stas Bekman - The Art of Debugging.epub" && git push
 
 check-links-local: html-local ## check local links
 	linkchecker --config build/linkcheckerrc $$(cat chapters-html.txt | tr "\n" " ") | tee linkchecker-local.txt
