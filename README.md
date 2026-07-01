@@ -47,6 +47,10 @@ You can download various ebook formats of this book:
 
 I will try to rebuild these once in a few weeks or so, but if you want the latest ebook versions, the instructions for building are [here](build).
 
+## SKILL.md for AI agents
+
+I maintain a [SKILL.md](./SKILL.md) file that you can use to teach your AI agent to debug your projects better.
+
 
 ## Machine Learning Engineering Open Book
 
