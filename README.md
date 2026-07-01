@@ -51,6 +51,8 @@ I will try to rebuild these once in a few weeks or so, but if you want the lates
 
 I maintain a [SKILL.md](./SKILL.md) file that you can use to teach your AI agent to debug your projects better.
 
+See also the companion skills: [Machine Learning Engineering](https://github.com/stas00/ml-engineering/blob/master/SKILL.md) and [Stas' Python Cookbook](https://github.com/stas00/python-cookbook/blob/main/SKILL.md).
+
 
 ## Machine Learning Engineering Open Book
 
@@ -71,13 +73,10 @@ The content of this site is distributed under [Attribution-ShareAlike 4.0 Intern
 
 ## My repositories map
 
-✔ **Machine Learning:**
+✔ **Free Books:**
  [ML Engineering Online Book](https://github.com/stas00/ml-engineering) |
- [ML ways](https://github.com/stas00/ml-ways) |
- [Porting](https://github.com/stas00/porting)
-
-✔ **Guides:**
- [The Art of Debugging](https://github.com/stas00/the-art-of-debugging)
+ [The Art of Debugging](https://github.com/stas00/the-art-of-debugging) |
+ [Stas' Python Cookbook](https://github.com/stas00/python-cookbook)
 
 ✔ **Applications:**
  [ipyexperiments](https://github.com/stas00/ipyexperiments)
@@ -91,3 +90,7 @@ The content of this site is distributed under [Attribution-ShareAlike 4.0 Intern
  [python](https://github.com/stas00/python-tools) |
  [tensorboard](https://github.com/stas00/tensorboard-tools) |
  [unix](https://github.com/stas00/unix-tools)
+
+✔ **Other Machine Learning:**
+ [ML ways](https://github.com/stas00/ml-ways) |
+ [Porting](https://github.com/stas00/porting)
