@@ -54,9 +54,10 @@ I maintain a [SKILL.md](./SKILL.md) file that you can use to teach your AI agent
 See also the companion skills: [Machine Learning Engineering](https://github.com/stas00/ml-engineering/blob/master/SKILL.md) and [Stas' Python Cookbook](https://github.com/stas00/python-cookbook/blob/master/SKILL.md).
 
 
-## Machine Learning Engineering Open Book
+## Related Open Books
 
-Make sure to also read [Machine Learning Engineering Open Book](https://github.com/stas00/ml-engineering) which has a lot of related recipes and methodologies, in the context of Machine Learning.
+- [Machine Learning Engineering Open Book](https://github.com/stas00/ml-engineering) — training and operating large-scale ML models.
+- [Stas' Python Cookbook](https://github.com/stas00/python-cookbook) — everyday Python and standard-library recipes.
 
 
 
