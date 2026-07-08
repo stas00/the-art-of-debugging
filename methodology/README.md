@@ -641,13 +641,13 @@ watch -n 'df -h | grep /tmp'
 
 One critical methodology to notice here is that I carefully filter only the data I need to watch. While I can have the whole often huge output of `df` refreshing once a second, it'd make noticing the single entry very difficult. By filtering out all the noise I get the signal that I need much easier.
 
-Now, say, you want to watch how your system handles programs that allocate too much memory and has `cgroups` killing it. You could run this little one-liner in a console which would allocate 1GB of cpu memory on each step and print how many were GBs allocated:
+Now, say, you want to watch how your system handles programs that allocate too much memory and has `cgroups` killing it. You could run this little one-liner in a console which would allocate 1GiB of cpu memory on each step and print how many were GiBs allocated:
 ```bash
 perl -le '$|=1; $gbs=10; $b="A"; $gb = $b x 2**30; $y .= $gb and print $_  for 2..$gbs; sleep 20'
 ```
-meanwhile to watch RSS grow by 1GB in another console run:
+meanwhile to watch RSS grow by 1GiB in another console run:
 ```bash
-watch -n 0.5 $'(ps auxc | head -1; ps auxc | grep perl | perl -plae \'$F[5]=sprintf q[%0.3fGB],$F[5]/2**20; $_=qq[@F]\') | column -t'
+watch -n 0.5 $'(ps auxc | head -1; ps auxc | grep perl | perl -plae \'$F[5]=sprintf q[%0.3fGiB],$F[5]/2**20; $_=qq[@F]\') | column -t'
 ```
 
 Replace `grep perl` with `grep python` and now you can nicely watch only Python processes in `top`-like style,
@@ -656,7 +656,7 @@ footnote: you can tell `top` to do the same (stat `top`, then hit `o`, then type
 
 Aliasing this requires a bunch of backslashes:
 ```bash
-alias watch-python=$'watch -n 0.5 \'(ps auxc | head -1; ps auxc | grep python | perl -plae "\$F[5]=sprintf q[%0.3fGB],\$F[5]/2**20; \$_=qq[@F]") | column -t\''
+alias watch-python=$'watch -n 0.5 \'(ps auxc | head -1; ps auxc | grep python | perl -plae "\$F[5]=sprintf q[%0.3fGiB],\$F[5]/2**20; \$_=qq[@F]") | column -t\''
 ```
 
 Specifically for `top` limitations to filtering, `htop` is more flexible filtering-wise. For example: filter by python, sort by RSS, only show my procs
@@ -677,7 +677,7 @@ As you have seen in the example from the section above:
 ```bash
 perl -le '$|=1; $gbs=10; $b="A"; $gb = $b x 2**30; $y .= $gb and print $_  for 2..$gbs; sleep 20'
 ```
-After we made this one liner to allocate 10GB of CPU memory, we sleep for 20 seconds so that we could observe this memory being allocated in `top` or another tool.
+After we made this one liner to allocate 10GiB of CPU memory, we sleep for 20 seconds so that we could observe this memory being allocated in `top` or another tool.
 
 ### Running out of resources: disk space, cpu memory, gpu memory
 
@@ -724,18 +724,18 @@ sudo umount ~/ramdisk
 
 If the application fails because it runs out of memory, but it occurs after many minutes/hours of waiting and you want to precipitate that event you could reduce your available CPU memory by quickly allocating as many GBs as you need.
 
-For example, here is how you can allocate 10GB and hold it in use - 1GB on each step and print how many GBs were allocated:
+For example, here is how you can allocate 10GiB and hold it in use - 1GiB on each step and print how many GiBs were allocated:
 
 ```bash
 perl -le '$|=1; $gbs=10; $b="A"; $gb = $b x 2**30; $y .= $gb and print $_  for 2..$gbs; sleep 1000'
 ```
 
-In another shell you can watch how the Resident memory usage grows in real time, 1GB at a time.
+In another shell you can watch how the Resident memory usage grows in real time, 1GiB at a time.
 ```bash
-watch -n 0.5 $'(ps auxc | head -1; ps auxc | grep perl | perl -plae \'$F[5]=sprintf q[%0.3fGB],$F[5]/2**20; $_=qq[@F]\') | column -t'
+watch -n 0.5 $'(ps auxc | head -1; ps auxc | grep perl | perl -plae \'$F[5]=sprintf q[%0.3fGiB],$F[5]/2**20; $_=qq[@F]\') | column -t'
 ```
 
-You can control how many GBs to allocate by changing `$gbs=10` to another desired number. And you can adjust the value of `sleep 1000` to however many seconds you want this program to hold this memory in use.
+You can control how many GiBs to allocate by changing `$gbs=10` to another desired number. And you can adjust the value of `sleep 1000` to however many seconds you want this program to hold this memory in use.
 
 Now you can run your original program with a much reduced available CPU memory.
 
@@ -746,7 +746,7 @@ Step 1. launch a new shell:
 systemd-run --user --scope -p MemoryHigh=5G -p MemoryMax=5G -p MemorySwapMax=3G --setenv="MEMLIMIT=5GB" bash
 ```
 
-Now any process launched from this shell will get killed if it consumes more than 5GB of RAM and more than 3GB of SWAP memory.
+Now any process launched from this shell will get killed if it consumes more than 5GiB of RAM and more than 3GiB of SWAP memory.
 
 `MemoryHigh` and `MemoryMax` are the soft and hard CPU memory limits correspondingly.
 
@@ -760,7 +760,7 @@ $ echo $MEMLIMIT
 
 Step 2. Run a program that consumes more than the limit you set in Step 1
 
-Let's reuse the one liner that allocates 1GB at a time, up to 10GB:
+Let's reuse the one liner that allocates 1GiB at a time, up to 10GiB:
 ```bash
 $ perl -le '$|=1; $gbs=10; $b="A"; $gb = $b x 2**30; $y .= $gb and print $_  for 2..$gbs; sleep 1000'
 2
@@ -769,12 +769,12 @@ $ perl -le '$|=1; $gbs=10; $b="A"; $gb = $b x 2**30; $y .= $gb and print $_  for
 5
 Killed
 ```
-As you can see this program got killed as soon as it allocated 5GB of Resident CPU memory.
+As you can see this program got killed as soon as it allocated 5GiB of Resident CPU memory.
 
 You can read [A Deep Investigation into MMAP Not Leaking Memory](https://stasosphere.com/entrepreneur-being/301-mmap-memory-leak-investigation/) to see how I used this technique to figure out whether MMAP leaks memory or not.
 
 For the detailed manpage see [systemd-run](https://www.freedesktop.org/software/systemd/man/systemd-run.html) and
-for additional properties that can be set [this section](https://www.freedesktop.org/software/systemd/man/systemd.resource-control.html#).
+for additional properties that can be set [this section](https://www.freedesktop.org/software/systemd/man/systemd.resource-control.html).
 
 
 
@@ -788,9 +788,9 @@ First, install `ipyexperiments`
 pip install ipyexperiments
 ```
 
-Now, say, you want to leave 3GB of free memory on your GPU card before you launch your program.
+Now, say, you want to leave 3GiB of free memory on your GPU card before you launch your program.
 
-Step 1. Run a magical one-liner to use-up all but 3GB of GPU memory
+Step 1. Run a magical one-liner to use-up all but 3GiB of GPU memory
 
 ```bash
 python -c 'import time, ipyexperiments.utils.mem; \
@@ -798,17 +798,17 @@ do_not_delete = ipyexperiments.utils.mem.gpu_mem_leave_free_mbs(3<<10); \
 time.sleep(1000)'
 ```
 
-You can run `nvidia-smi` to validate that only 3GB remain free.
+You can run `nvidia-smi` to validate that only 3GiB remain free.
 
 If you need the allocation to last longer/shorter - adjust the sleep time.
 
 footnote: `3<<10 == 3*2**10` - it's just less to type
 
-Step 2. Run your program that you want to test how it performs with just 3GB of free memory.
+Step 2. Run your program that you want to test how it performs with just 3GiB of free memory.
 
 You can also copy the code from the one-liner into the beginning of your program, but it's easier to keep the separated so that your program remains clean of debug code.
 
-And how was the memory pre-allocated? Using a simple `torch.ones` allocator. For example here is how you can pre-allocate 10GB of GPU memory:
+And how was the memory pre-allocated? Using a simple `torch.ones` allocator. For example here is how you can pre-allocate 10GiB of GPU memory:
 ```python
 import torch
 n=10
