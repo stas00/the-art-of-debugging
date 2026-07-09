@@ -107,7 +107,7 @@ so indeed you can see that core files are sent to `apport`. I'm going to overrid
 ```bash
 sudo sysctl -w kernel.core_pattern=/tmp/core-%e.%p.%h.%t
 ```
-will save the core files under `/tmp/` using the name of the program, followed by the process id, then the hostname and finally the time stamp of when it was run. So let's now re-run the program again:
+This command will save the core files under `/tmp/` using the name of the program, followed by the process id, then the hostname and finally the time stamp of when it was run. So let's now re-run the program again:
 
 ```bash
 $ ./make-segfault
@@ -142,7 +142,7 @@ footnote: if you don't have `sudo` access lookup valgrind which sometimes helps 
 
 ### Get the backtrace from the core file
 
-To inspect the core file, with invoke `gdb` with the path to the core file and the path to the program that created it and when it loaded we run the following command: `bt`:
+To inspect the core file, invoke `gdb` with the path to the core file and the path to the program that created it, and once it has loaded we run the following command: `bt`:
 ```bash
 gdb -c /tmp/core-make-segfault.150885.hope.1698030657 make-segfault
 [...]

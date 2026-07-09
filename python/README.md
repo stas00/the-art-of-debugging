@@ -378,7 +378,7 @@ git_repo_path = str(Path(__file__).resolve().parents[1])
 sys.path.insert(1, git_repo_path)
 ```
 
-That's it, now your tests will always have the repo path appear first in `sys.path`.
+That's it, now your tests will always have the repo path appear second in `sys.path` (after the test dir path).
 
 footnote: you can choose to insert into position `0` instead of `1` as well, but I like to keep Python's current directory as the first one to look for files.
 
@@ -440,7 +440,7 @@ What can we learn from the output of the profiler:
 - `time.sleep` was called 3 times, for a total of 0.3sec, each call being 0.1sec
 - `run` was called once, and close to zero time was spent in the function itself (`tottime`) but cumulatively 0.3sec passed
 
-When running a real program it's often important to sort the output. The default sorting is by cumulative time but you can sort by any column name from the output above with the help of the `-n` argument. For example, `-n calls` will sort by `ncalls` (the number of calls). Let's validate:
+When running a real program it's often important to sort the output. The default sorting is by cumulative time but you can sort by any column name from the output above with the help of the `-s` argument. For example, `-s ncalls` will sort by `ncalls` (the number of calls). Let's validate:
 
 ```bash
 $ python -m cProfile -s ncalls sleep.py
@@ -724,4 +724,4 @@ way2=0.06159617658704519
 
 Which gives us yet another outcome, here `math.pow` is only about 2x slower than `**`.
 
-One thing to observe here is that 3 different measurement approaches give very different results. Since the optimization work is newer versions relative to previous versions performance, it probably doesn't matter as long as you consistently use the same method.
+One thing to observe here is that 3 different measurement approaches give very different results. Since what usually matters is the relative performance of one approach versus another, the exact method probably doesn't matter as long as you consistently use the same one.

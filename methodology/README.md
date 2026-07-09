@@ -474,14 +474,15 @@ Most shells let you cycle through past commands with arrow up and down, and this
 
 It works like this. You type `Ctrl-r` and then start typing the beginning of a string that's part of the command you are looking for, For example, you type: `git`. And then you continue hitting `Ctrl-r` to cycle through all commands in the history starting with `git`.
 
-If you already started typing the command and decided to search then, you'd then hit `Ctrl-a` to move to the beginning of the string you're searching for and then `Ctrl-r` to start search, then `Ctrl-y` to paste the substring and then again `Ctrl-r` to cycle through matches. This is not very easy to remember.
+If you already started typing the command and decided to search, you'd hit `Ctrl-a` to move to the beginning of the line, `Ctrl-k` to cut what you typed, `Ctrl-r` to start the search, `Ctrl-y` to paste the cut text as the search string, and then `Ctrl-r` again to cycle through matches. This is not very easy to remember.
 
 Here is the full sequence again:
 ```
-CTRL-a # This moves our cursor to the beginning of the line.
-CTRL-r # copy the current command line
-CTRL-y # paste it
-CTRL-r # search the history (repeat this last command)
+CTRL-a # move the cursor to the beginning of the line
+CTRL-k # cut the typed text into the kill-ring
+CTRL-r # start reverse history search
+CTRL-y # paste the cut text as the search string
+CTRL-r # repeat to cycle through matches
 ```
 
 Here is a even easier approach to history search. Add this:
@@ -650,7 +651,7 @@ meanwhile to watch RSS grow by 1GiB in another console run:
 watch -n 0.5 $'(ps auxc | head -1; ps auxc | grep perl | perl -plae \'$F[5]=sprintf q[%0.3fGiB],$F[5]/2**20; $_=qq[@F]\') | column -t'
 ```
 
-Replace `grep perl` with `grep python` and now you can nicely watch only Python processes in `top`-like style,
+Replace `grep perl` with `grep python` and now you can nicely watch only Python processes in `top`-like style.
 
 footnote: you can tell `top` to do the same (stat `top`, then hit `o`, then type `COMMAND=python`) but you can't automate it. Sometimes you can cheat with `top -p $(pgrep -d "," python)` but the target process has to be running already, I'd rather keep the diagnostics running non-stop.
 
@@ -1059,8 +1060,8 @@ mv experiment experiment1
 So you can create now say 2 additional sets of files:
 
 ```bash
-cp -r experiment experiment2
-cp -r experiment experiment3
+cp -r experiment1 experiment2
+cp -r experiment1 experiment3
 ```
 now tweak the files in each of these sets as you wish and when you are about to run the actual debug experiment you can simply symlink to the desired set atomically at execution time:
 
