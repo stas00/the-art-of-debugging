@@ -445,8 +445,7 @@ In general, the less you need to type, the more likely you will succeed to resol
 
 Sometimes it's even possible to completely automate the reporting w/o requiring any typing at all. When I try to debug memory leaks I use tools that report memory usage or deltas automatically. e.g. I developed [ipyexperiments](https://github.com/stas00/ipyexperiments) that auto-reports CPU and GPU memory usage and increments in Jupyter notebook environment. As mentioned earlier one has to be very careful using such environments for debugging so I have to always remember to re-run the whole notebook and not be tempted to re-run only parts of it. But the benefit here is that I can group the code into sections and get auto-reports at how each section of code consumed CPU and/or GPU memory. This is also a fantastic tool for diagnosing memory leaks, as I can re-run the same cell multiple times emulating a loop and see whether the memory usage grows or not.
 
-
-XXX: link to useful gdb aliases
+gdb supports the same idea via `~/.gdbinit`, where you can add your own [user-defined commands](https://sourceware.org/gdb/current/onlinedocs/gdb.html/Define.html) and `alias`es. And for ready-made productivity boosters there are full enhancement suites like [GEF](https://github.com/hugsy/gef), [pwndbg](https://github.com/pwndbg/pwndbg) and [gdb-dashboard](https://github.com/cyrus-and/gdb-dashboard).
 
 ### Handy shell shortcuts
 
