@@ -1,6 +1,6 @@
 # usage: make help
 
-.PHONY: help spell prep-html-files html html-local pdf epub upload check-links-local check-links-all clean
+.PHONY: help spell prep-html-files html html-local pdf epub upload fix-tables check-links-local check-links-all clean
 .DEFAULT_GOAL := help
 
 help: ## this help
@@ -43,6 +43,9 @@ upload: pdf epub ## upload pdf to the hub
 	cp "Stas Bekman - The Art of Debugging.pdf" the-art-of-debugging-book/
 	cp "Stas Bekman - The Art of Debugging.epub" the-art-of-debugging-book/
 	cd the-art-of-debugging-book/ && git commit -m "new version" "Stas Bekman - The Art of Debugging.pdf" "Stas Bekman - The Art of Debugging.epub" && git push
+
+fix-tables: ## fix markdown tables so they render (join multi-line headers, add missing blank lines, realign pipes)
+	python build/fix-tables.py
 
 check-links-local: html-local ## check local links
 	linkchecker --config build/linkcheckerrc $$(cat chapters-html.txt | tr "\n" " ") | tee linkchecker-local.txt
