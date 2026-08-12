@@ -61,14 +61,32 @@ int main(void)
 
 Let's first compile the program
 ```bash
-gcc -g make-segfault.c -o make-segfault
+gcc -O2 -g make-segfault.c -o make-segfault
 ```
 
-`-g` is for enabling debug.
+- `-O2` turns on a typical optimization level so this particular bug is more likely to actually fault (with no optimization it often just prints a garbage value and exits)
+- `-g` enables debug info.
 
 Now, let's run the program:
 ```bash
 ./make-segfault
+Segmentation fault
+```
+
+In case the program above didn't segfault on your system - dereferencing an uninitialized pointer is undefined behavior, so depending on the compiler, optimization level and OS it may instead print a garbage value and exit normally - here's a variation that raises `SIGSEGV` explicitly and is guaranteed to crash:
+```c
+#include <signal.h>
+
+int main(void)
+{
+    raise(SIGSEGV); // trigger a Segmentation fault
+    return (0);
+}
+```
+Save it as `raise-segfault.c`, then compile and run it the same way (and use `raise-segfault` in place of `make-segfault` for the rest of this section):
+```bash
+gcc -O2 -g raise-segfault.c -o raise-segfault
+./raise-segfault
 Segmentation fault
 ```
 

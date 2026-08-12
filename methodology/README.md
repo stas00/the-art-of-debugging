@@ -852,7 +852,7 @@ git bisect start
 
 3. Discover the last known good and the first known bad commits
 
-`git bisect` needs just 2 data points to do its work. It needs to know one earlier commit that is known to work (`good`) and one later commit that is know to break (`bad`). So if you look at the sequence of commits on a given branch it'd have 2 known points and many commits around these that are of an unknown quality:
+`git bisect` needs just 2 data points to do its work. It needs to know one earlier commit that is known to work (`good`) and one later commit that is known to break (`bad`). So if you look at the sequence of commits on a given branch it'd have 2 known points and many commits around these that are of an unknown quality:
 
 ```
 ...... orig_good ..... .... .... .... ..... orig_bad ....
@@ -943,7 +943,7 @@ git bisect visualize --oneline
 
 6. Clean up
 
-So now restore the git repo clone to the same state you started from (most likely `HEAD) with:
+So now restore the git repo clone to the same state you started from (most likely `HEAD`) with:
 ```bash
 git bisect reset
 ```
@@ -961,7 +961,7 @@ If for some reason the current commit cannot be tested - it can be skipped with:
 ```bash
 git bisect skip
 ```
-and it `git bisect` will continue bisecting the remaining commits.
+and `git bisect` will continue bisecting the remaining commits.
 
 This is often helpful if some API has changed in the middle of the commit range and your program starts to fail for a totally different reason.
 
@@ -984,13 +984,15 @@ git bisect start --term-new=fixed --term-old=broken
 git bisect fixed
 git bisect broken 6c94774
 ```
-and then use:
+and then continue marking commits with:
 ```bash
-git fixed / git broken
+git bisect fixed
+git bisect broken
 ```
 instead of:
 ```bash
-git good / git bad
+git bisect good
+git bisect bad
 ```
 
 c. complications

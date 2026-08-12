@@ -12,6 +12,8 @@ import psutil
 import torch
 import torch.distributed as dist
 
+psutil_process = psutil.Process()
+
 can_run_pynvml = True
 try:
     import pynvml
@@ -65,7 +67,7 @@ def see_memory_usage(message, force=False, ranks=[0]):
         - `force`: allows you to leave see_memory_usage in the code w/o running the code, set `force=True` to activate
         - `ranks`: by default prints only on rank 0 but if needing to debug other ranks, pass the list of desirable ranks, e.g., `ranks=[1,3]`
 
-    You want to make sure `pip install nvidia-ml-py` is run, so that the report include not only the CUDA memory report but the total gpu memory usage, since CUDA memory allocator is not always used. e.g. NCCL memory allocations aren't visible by CUDA and thus aren't reported, but can consume GBs of gpu memory.
+    You want to make sure `pip install nvidia-ml-py` is run, so that the report include not only the CUDA memory report but the total gpu memory usage, since CUDA memory allocator is not always used. e.g. NCCL memory allocations aren't visible by CUDA and thus aren't reported, but can consume GiBs of gpu memory.
 
     Pattern of usage:
 
@@ -96,18 +98,21 @@ def see_memory_usage(message, force=False, ranks=[0]):
     nv_mem = get_nvml_mem()
 
     vm_stats = psutil.virtual_memory()
-    used_GB = round(((vm_stats.total - vm_stats.available) / (1024**3)), 2)
+    node_used_GiB = round(((vm_stats.total - vm_stats.available) / 2**30), 2)
+    proc_used_GiB = round((psutil_process.memory_info().rss / 2**30), 2)
 
     accelerator_mem_str = " | ".join(
         [
-            f"MA {round(torch.cuda.memory_allocated() / 2**30, 2):0.2f} GB",
-            f"Max_MA {round(torch.cuda.max_memory_allocated() / 2**30, 2):0.2f} GB",
-            f"CA {round(torch.cuda.memory_reserved() / 2**30, 2):0.2f} GB",
-            f"Max_CA {round(torch.cuda.max_memory_reserved() / 2**30, 2):0.2f} GB",
-            f"NV {round(nv_mem / 2**30, 2):0.2f} GB",
+            f"MA {round(torch.cuda.memory_allocated() / 2**30, 2):0.2f} GiB",
+            f"Max_MA {round(torch.cuda.max_memory_allocated() / 2**30, 2):0.2f} GiB",
+            f"CA {round(torch.cuda.memory_reserved() / 2**30, 2):0.2f} GiB",
+            f"Max_CA {round(torch.cuda.max_memory_reserved() / 2**30, 2):0.2f} GiB",
+            f"NV {round(nv_mem / 2**30, 2):0.2f} GiB",
         ]
     )
-    cpu_mem_str = f"CPU Virtual Memory:  used = {used_GB} GB, percent = {vm_stats.percent}%"
+    # proc = this process's resident memory (RSS); node = host-wide RAM in use (total - available).
+    # both are point-in-time snapshots, not peaks - see the "Getting program's CPU peak memory usage" docs for peak tools
+    cpu_mem_str = f"CPU mem: proc {proc_used_GiB:0.2f} GiB / node {node_used_GiB:0.2f} GiB ({vm_stats.percent}%)"
 
     # add '[rank] mp' prefix to enable easy grep
     print(f"[{rank}] mp: {message}")

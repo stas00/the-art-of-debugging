@@ -71,7 +71,7 @@ Full chapter: [Unix Tools for Debugging](https://github.com/stas00/the-art-of-de
   ```bash
   strace python -c "print('hi')"                 # trace from the start
   strace --pid PID                               # attach to a running/stuck process
-  strace -o log.txt -f python -m torch.distributed.run ...  # -f follows forked children
+  strace -o log.txt -f torchrun ...  # -f follows forked children
   strace -e trace=open,openat,read python prog.py           # filter to specific syscalls
   strace -e trace=network -p PID                            # is it stuck on a socket?
   ```
