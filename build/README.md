@@ -31,16 +31,48 @@ It will first build the html target and then will use it to build the pdf versio
 
 ## Check links and anchors
 
-To validate that all local links and anchored links are valid run:
+Fast scan of local links and anchors (no HTML build, no `markdown_it`):
+```
+make check-links-local-fast
+```
+
+Full HTML build then `linkchecker` on local links:
 ```
 make check-links-local
 ```
 
-To additionally also check external links
+To additionally also check external links:
 ```
 make check-links-all
 ```
 use the latter sparingly to avoid being banned for hammering servers.
+
+Deliberate redirect sweep (external URLs that have moved; needs network, slow):
+```
+make check-redirects
+```
+
+Batch-check newly added external URLs only:
+```
+build/check-new-links.sh URL [URL ...]
+```
+
+## Style and programs
+
+Report hard-wrapped prose (the book is one line per paragraph):
+```
+make check-style
+```
+
+Re-pad Markdown tables after an edit:
+```
+make fix-tables
+```
+
+Compile-check reader-facing programs (does not run them):
+```
+make check-programs
+```
 
 
 ## Move md files/dirs and adjust relative links
