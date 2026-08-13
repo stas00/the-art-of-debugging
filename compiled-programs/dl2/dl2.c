@@ -1,9 +1,9 @@
 #include <stdio.h>
 
-extern void util_a();
-extern void util_b();
+extern int util_a(void);
+extern int util_b(void);
 
-int main()
+int main(void)
 {
     printf("Inside main()\n");
     util_a();

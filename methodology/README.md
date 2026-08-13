@@ -446,100 +446,7 @@ Sometimes it's even possible to completely automate the reporting w/o requiring 
 
 gdb supports the same idea via `~/.gdbinit`, where you can add your own [user-defined commands](https://sourceware.org/gdb/current/onlinedocs/gdb.html/Define.html) and `alias`es. And for ready-made productivity boosters there are full enhancement suites like [GEF](https://github.com/hugsy/gef), [pwndbg](https://github.com/pwndbg/pwndbg) and [gdb-dashboard](https://github.com/cyrus-and/gdb-dashboard).
 
-### Handy shell shortcuts
-
-The following bash shortcuts will save you a lot of debug time.
-
-You need to navigate the prompt line with the command on it quickly. You can use arrows but it can be too slow if your command line is long. Instead learn these handy shortcuts:
-
-- `Ctrl+a`: moves the cursor to the beginning of the line.
-- `Ctrl+e`: moves the cursor to the end of the line.
-- `Alt+f`:  moves one word forward.
-- `Alt+b`:  moves one word backward.
-
-Similarly to how arrows are slow to move the cursor, `Del` and `Backspace` are slow to delete characters. You can instead:
-
-- `Ctrl+u`: erases everything from the current cursor position to the beginning of the line.
-- `Ctrl+k`: erases everything from the current cursor position to the end of the line.
-
-### Use bash history
-
-Do not re-type commands you have already executed - this is a huge time wasting and you're likely to make mistakes.
-
-Instead, rely on either an experiment cheatsheet file where you write all the commands and you copy-n-paste from, or use the bash history (or whatever shell's history that you use). I do both since some of the history gets lost when other shells write to it as well.
-
-Most shells let you cycle through past commands with arrow up and down, and this is the fastest way to repeat recent commands, but once you need to go back 10 commands it becomes tedious. So use bash history search feature to find things faster.
-
-It works like this. You type `Ctrl-r` and then start typing the beginning of a string that's part of the command you are looking for, For example, you type: `git`. And then you continue hitting `Ctrl-r` to cycle through all commands in the history starting with `git`.
-
-If you already started typing the command and decided to search, you'd hit `Ctrl-a` to move to the beginning of the line, `Ctrl-k` to cut what you typed, `Ctrl-r` to start the search, `Ctrl-y` to paste the cut text as the search string, and then `Ctrl-r` again to cycle through matches. This is not very easy to remember.
-
-Here is the full sequence again:
-```
-CTRL-a # move the cursor to the beginning of the line
-CTRL-k # cut the typed text into the kill-ring
-CTRL-r # start reverse history search
-CTRL-y # paste the cut text as the search string
-CTRL-r # repeat to cycle through matches
-```
-
-Here is a even easier approach to history search. Add this:
-
-```bash
-$ cat ~/.inputrc
-"\e[A": history-search-backward
-"\e[B": history-search-forward
-```
-and restart `bash`.
-
-This setup allows me to type the beginning of the command, say `git` and then hit Arrow-Up key and search through previously executed commands starting with this string - Arrow-Down key will search backwards. This is a way simpler and more intuitive.
-
-footnote: I think this feature comes from `tcsh` where it's using `Esc-p` and `Esc-n` - but really you can bind these actions to any keys you want to e.g. `"\ep"` and `"\en"` for `Esc-p` and `Esc-n` accordingly.
-
-Finally, you can always search the history using other tools. For example, let's search for `git`
-```bash
-$ history | grep git
- 1663  git stash
- 1664  git checkout main
- 1665  git pull
-```
-and now you can either copy-n-paste the command that you need or you can even run the wanted command by the number in the first column, so we can do:
-```bash
-$ !1665
-git pull
-Already up to date.
-```
-Here Bash echo'ed the command it is about to start and run it.
-
-
-Here are some other useful settings related to managing bash history related to its size, duplicate management and whether it gets rewritten on every new shell.
-
-```bash
-$ cat ~/.bashrc
-[...]
-# don't put duplicate lines in the history. See bash(1) for more options
-# ... or force ignoredups and ignorespace
-HISTCONTROL=ignoredups:ignorespace
-
-# append to the history file, don't overwrite it on starting a new shell
-shopt -s histappend
-
-# for setting history length see HISTSIZE and HISTFILESIZE in bash(1)
-HISTSIZE=1000
-HISTFILESIZE=2000
-[...]
-```
-
-The other useful setting for `~/.inputrc` is:
-
-```bash
-$ cat ~/.inputrc
-[...]
-# allow new line copy with the command
-set enable-bracketed-paste Off
-```
-
-So if you're managing your experiment commands in a file this will allow you to copy multiple commands at once, by keeping the new lines and not require adding `;` at the end of each command.
+Learn your shell's line-editing and history shortcuts - they save a lot of debug time. These are covered in the Unix chapter under [Handy shell shortcuts](https://github.com/stas00/the-art-of-debugging/blob/master/unix/README.md#handy-shell-shortcuts) and [Use bash history](https://github.com/stas00/the-art-of-debugging/blob/master/unix/README.md#use-bash-history).
 
 ### The power of one-liner programs
 
@@ -591,8 +498,7 @@ perl -pi -e 's|require_multigpu|require_torch_multigpu|g' {} \;
 ```
 where I rename a function in all files carefully skipping the `.git` directory. One can of course the same using their IDE, but then you have to tell others to do more work if they have to manually update their diverging branches, or to users if you're intentionally changing the API. So, hey, we have just changed the API, please run this one-liner on your code when you updated to the latest package - a breeze and things continue working for the users despite API changes.
 
-As you warm up to the joy and profit of using one-liners make sure to empower yourself with [
-Handy shell shortcuts](#handy-shell-shortcuts) to navigate the command line quickly and learn [how to use bash history](#use-bash-history) to quickly bring previously run one-liners to the fore.
+As you warm up to the joy and profit of using one-liners make sure to empower yourself with [Handy shell shortcuts](https://github.com/stas00/the-art-of-debugging/blob/master/unix/README.md#handy-shell-shortcuts) to navigate the command line quickly and learn [how to use bash history](https://github.com/stas00/the-art-of-debugging/blob/master/unix/README.md#use-bash-history) to quickly bring previously run one-liners to the fore.
 
 Now you will observe how I use a lot more Perl one-liners in this guide, rather than Python one-liners as Python wasn't designed to be used in this way and so when it works it's mostly accidental. Whereas Perl was designed to be used as part of Unix toolchain and thus it has a myriad of shortcuts that let you do amazing things in just a few short instructions.
 

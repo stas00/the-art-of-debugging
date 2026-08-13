@@ -1,7 +1,7 @@
 #include <stdio.h>
 
-extern void util_a();
-int main()
+extern int util_a(void);
+int main(void)
 {
     printf("Inside main()\n");
     util_a();

@@ -206,14 +206,19 @@ This approach is very useful if the process is hanging or seems to be spinning c
 case study: see this [Issue](https://github.com/pytorch/pytorch/issues/60158#issuecomment-865142029) for an example of how this approach was used to diagnose a deadlock in PyTorch. This is also a good example of seeing a backtrace for multiple threads in a real application.
 
 
-### Abort the program while dumping a core file
+### Dump a core file from a running process
 
-And you can even force a core dump, by running either of these 2 commands (edit the pid):
+To snapshot a still-running process without stopping it (edit the pid):
 ```bash
 gcore 107903
+```
+That writes a core image and normally leaves the process running.
+
+To abort the process and get a core that way, if core dumps are enabled and not blocked by a signal handler:
+```bash
 kill -ABRT 107903
 ```
-this will also kill the program. This is again could be useful if the program is out of control and you want to make sure you saved the core file which you can analyze later, while freeing the resources.
+Use this when the program is out of control and you want to free resources after saving a core you can analyze later.
 
 footnote: `strace -p 107903` can be also useful for seeing where the process is stuck, but if it's some serious problem your `strace` could get stuck as well. For example, the latter problem can happen if a process tied to a GPU which stopped functioning and doesn't respond.
 
@@ -322,7 +327,7 @@ ls -l /lib/x86_64-linux-gnu/libc.*
 ```
 
 Here:
-- `libc.so.6` is the shared library from the 6th generation of `libc` (could be higher or lower)
+- `libc.so.6` is the shared library file; the `.6` is its ABI version - the SONAME major - not a count of "generations". It only changes when the binary interface breaks backward compatibility (could be higher or lower)
 - `libc.so` is a special kind of a linker script used during application building and in this case it's not a shared library
 - `libc.a` is a static object that can be used to "bundle" the contents of `libc` with the application rather than loading it run time.
 
@@ -359,7 +364,7 @@ Here is the source of a simple shared library [util.c](./dl1/util.c):
 ```c
 #include <stdio.h>
 
-int util_a()
+int util_a(void)
 {
     printf("Inside util_a()\n");
     return 0;
@@ -369,8 +374,8 @@ and a simple program to drive it [dl1.c](./dl1/dl1.c):
 ```c
 #include <stdio.h>
 
-extern void util_a();
-int main()
+extern int util_a(void);
+int main(void)
 {
     printf("Inside main()\n");
     util_a();
@@ -390,7 +395,7 @@ gcc dl1.c -L. -lmyutil -o dl1
 ```
 
 Note that
-- the prefix `lib` of `libmyutil.so` is removed when setting `-lmyutil`, which explains why all shared libraries start with `lib`.
+- `-lmyutil` maps to the filename `libmyutil.so` - the linker adds the `lib` prefix and `.so` suffix itself. This `lib*.so` naming is the convention the `-l` option relies on, so libraries you link this way are named that way - it's not a rule the loader enforces, and shared objects can have other filenames.
 -`-L.` tells `gcc` to additionally search the current directory for shared libraries.
 
 Let's try running this newly build application:
@@ -503,13 +508,13 @@ Here is the source of a simple shared library [util.c](./dl2/util.c):
 ```c
 #include <stdio.h>
 
-int util_a()
+int util_a(void)
 {
     printf("Inside util_a()\n");
     return 0;
 }
 
-int util_b()
+int util_b(void)
 {
     printf("Inside util_b()\n");
     return 0;
@@ -519,10 +524,10 @@ and a simple program to drive it [dl2.c](./dl2/dl2.c):
 ```c
 #include <stdio.h>
 
-extern void util_a();
-extern void util_b();
+extern int util_a(void);
+extern int util_b(void);
 
-int main()
+int main(void)
 {
     printf("Inside main()\n");
     util_a();

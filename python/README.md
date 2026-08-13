@@ -643,7 +643,7 @@ In the first example we have seen this in the report, which told us nothing abou
       ncalls  tottime  percall  cumtime  percall filename:lineno(function)
            1    0.000    0.000    0.300    0.300 sleep.py:2(run)
 ```
-but now we see it took 13msecs:
+but now we see it took 13 microseconds:
 ```
    ncalls  tottime  percall  cumtime  percall filename:lineno(function)
         1 0.000013 0.000013 0.300410 0.300410 sleep4.py:5(run)

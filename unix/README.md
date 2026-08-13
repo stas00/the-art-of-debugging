@@ -75,7 +75,7 @@ git clone https://github.com/magicmonty/bash-git-prompt ~/.bash-git-prompt --dep
 cd ~/.bash-git-prompt/themes
 wget https://raw.githubusercontent.com/stas00/the-art-of-debugging/master/unix/bash-git-prompt/Stas.bgptheme
 ```
-You way want to inspect [Stas.bgptheme](bash-git-prompt/Stas.bgptheme) first to see that I'm not injecting something into your environment.
+You may want to inspect [Stas.bgptheme](bash-git-prompt/Stas.bgptheme) first to see that I'm not injecting something into your environment.
 
 and when you're happy add this to your `~/.bashrc`:
 ```bash
@@ -375,6 +375,101 @@ prep
 ```
 
 As you can see the broken command on line 5 didn't abort the script, due to `set +e`, but the one at line 7 did, due to `set -e`.
+
+### Handy shell shortcuts
+
+The following bash shortcuts will save you a lot of debug time.
+
+You need to navigate the prompt line with the command on it quickly. You can use arrows but it can be too slow if your command line is long. Instead learn these handy shortcuts:
+
+- `Ctrl+a`: moves the cursor to the beginning of the line.
+- `Ctrl+e`: moves the cursor to the end of the line.
+- `Alt+f`:  moves one word forward.
+- `Alt+b`:  moves one word backward.
+
+Similarly to how arrows are slow to move the cursor, `Del` and `Backspace` are slow to delete characters. You can instead:
+
+- `Ctrl+u`: erases everything from the current cursor position to the beginning of the line.
+- `Ctrl+k`: erases everything from the current cursor position to the end of the line.
+
+### Use bash history
+
+Do not re-type commands you have already executed - this is a huge time wasting and you're likely to make mistakes.
+
+Instead, rely on either an experiment cheatsheet file where you write all the commands and you copy-n-paste from, or use the bash history (or whatever shell's history that you use). I do both since some of the history gets lost when other shells write to it as well.
+
+Most shells let you cycle through past commands with arrow up and down, and this is the fastest way to repeat recent commands, but once you need to go back 10 commands it becomes tedious. So use bash history search feature to find things faster.
+
+It works like this. You type `Ctrl-r` and then start typing the beginning of a string that's part of the command you are looking for, For example, you type: `git`. And then you continue hitting `Ctrl-r` to cycle through all commands in the history starting with `git`.
+
+If you already started typing the command and decided to search, you'd hit `Ctrl-a` to move to the beginning of the line, `Ctrl-k` to cut what you typed, `Ctrl-r` to start the search, `Ctrl-y` to paste the cut text as the search string, and then `Ctrl-r` again to cycle through matches. This is not very easy to remember.
+
+Here is the full sequence again:
+```
+CTRL-a # move the cursor to the beginning of the line
+CTRL-k # cut the typed text into the kill-ring
+CTRL-r # start reverse history search
+CTRL-y # paste the cut text as the search string
+CTRL-r # repeat to cycle through matches
+```
+
+Here is a even easier approach to history search. Add this:
+
+```bash
+$ cat ~/.inputrc
+"\e[A": history-search-backward
+"\e[B": history-search-forward
+```
+and restart `bash`.
+
+This setup allows me to type the beginning of the command, say `git` and then hit Arrow-Up key and search through previously executed commands starting with this string - Arrow-Down key will search backwards. This is a way simpler and more intuitive.
+
+footnote: I think this feature comes from `tcsh` where it's using `Esc-p` and `Esc-n` - but really you can bind these actions to any keys you want to e.g. `"\ep"` and `"\en"` for `Esc-p` and `Esc-n` accordingly.
+
+Finally, you can always search the history using other tools. For example, let's search for `git`
+```bash
+$ history | grep git
+ 1663  git stash
+ 1664  git checkout main
+ 1665  git pull
+```
+and now you can either copy-n-paste the command that you need or you can even run the wanted command by the number in the first column, so we can do:
+```bash
+$ !1665
+git pull
+Already up to date.
+```
+Here Bash echo'ed the command it is about to start and run it.
+
+
+Here are some other useful settings related to managing bash history related to its size, duplicate management and whether it gets rewritten on every new shell.
+
+```bash
+$ cat ~/.bashrc
+[...]
+# don't put duplicate lines in the history. See bash(1) for more options
+# ... or force ignoredups and ignorespace
+HISTCONTROL=ignoredups:ignorespace
+
+# append to the history file, don't overwrite it on starting a new shell
+shopt -s histappend
+
+# for setting history length see HISTSIZE and HISTFILESIZE in bash(1)
+HISTSIZE=1000
+HISTFILESIZE=2000
+[...]
+```
+
+The other useful setting for `~/.inputrc` is:
+
+```bash
+$ cat ~/.inputrc
+[...]
+# allow new line copy with the command
+set enable-bracketed-paste Off
+```
+
+So if you're managing your experiment commands in a file this will allow you to copy multiple commands at once, by keeping the new lines and not require adding `;` at the end of each command.
 
 ## strace
 

@@ -1,7 +1,5 @@
 # Book Building
 
-There is a PDF ready-made for you at [] but you can use this if you want to build it yourself.
-
 This document assumes you're working from the root of the repo.
 
 ## Installation requirements
@@ -12,6 +10,10 @@ pip install -r build/requirements.txt
 ```
 
 2. Download the free version of [Prince XML](https://www.princexml.com/download/). It's used to build the pdf version of this book.
+
+3. Install the system tools used by the ebook targets:
+   - `pdftk` - assembles the final PDF (bookmarks, cover, metadata) in `make pdf`
+   - `pandoc` - converts the HTML to EPUB in `make epub`
 
 
 ## Build html
@@ -27,6 +29,14 @@ make pdf
 ```
 
 It will first build the html target and then will use it to build the pdf version.
+
+## Build epub
+
+```
+make epub
+```
+
+It will first build the html target and then will use it to build the epub version.
 
 
 ## Check links and anchors
