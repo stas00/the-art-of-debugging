@@ -262,7 +262,7 @@ case study: Sometimes I have one of the tests running under `pytest` segfault. I
 ```bash
 gdb -ex r --args python -m pytest -sv tests/test_failing.py
 ```
-then when it segfaults hit `c`+Enter, then run `bt` and `c`+Enter.
+then when it segfaults run `bt` (or `thread apply all bt`) while still stopped to capture the stack; only then hit `c`+Enter if you want to let the process continue (which by default delivers the pending `SIGSEGV` and normally kills it).
 
 In this use case, we launched the python program via `--args`, and `-ex` told `gdb` to run `r` which is the shortcut for `run`.
 
