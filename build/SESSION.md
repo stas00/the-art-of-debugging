@@ -33,6 +33,7 @@
 15. Say in prose where a figure came from when the source is non-English, so the reader knows the claim is traceable and knows which site to check. Naming the language is useful; reproducing it is not.
 16. No politics. The book is about engineering, so keep out trade policy, sanctions, export controls, and national rivalry even when they explain a market fact. Where such a fact matters to a reader's decision, state the fact and stop: "not generally obtainable in this market" is engineering information a reader can act on, while why that is the case is not. This also rules out framing a vendor or a country as a rival, a threat, or a winner.
 17. **Never hard-wrap prose. One line per paragraph.** Enforced by `make check-style`, so it is a check rather than something to remember. Tables, code fences and list items keep their own line; a list item's continuation belongs on the item's line. Do not hand-pad tables either - `make fix-tables` re-pads columns and asserts the cell contents are unchanged, and its `--dry-run` exits non-zero, so that is a check too.
+18. **Linux only.** This book targets Linux. Validate commands and teach platform behavior for Linux; do not mention macOS, BSD, or other Unix variants unless the author asks. Do not qualify advice with "on Linux … / on macOS …" comparisons - write the Linux form and leave it at that.
 
 ## Reader-visible grounding
 

@@ -1066,15 +1066,18 @@ cp -r experiment1 experiment3
 now tweak the files in each of these sets as you wish and when you are about to run the actual debug experiment you can simply symlink to the desired set atomically at execution time:
 
 ```bash
-ln -s experiment1 experiment; python experiment/test.py --config experiment/config.yaml
+ln -sfn experiment1 experiment; python experiment/test.py --config experiment/config.yaml
 ```
+
+footnote: `-s` symlink, `-f` replace an existing `experiment` link, `-n` do not follow it into the old target directory.
+
 and later if you want to do set 2:
 ```bash
-ln -s experiment2 experiment; python experiment/test.py --config experiment/config.yaml
+ln -sfn experiment2 experiment; python experiment/test.py --config experiment/config.yaml
 ```
 and same for 3:
 ```bash
-ln -s experiment3 experiment; python experiment/test.py --config experiment/config.yaml
+ln -sfn experiment3 experiment; python experiment/test.py --config experiment/config.yaml
 ```
 
 The critical nuance here is that we are changing a single source of truth as compared to changing the folder name in multiple places:
