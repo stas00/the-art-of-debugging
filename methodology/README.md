@@ -341,8 +341,7 @@ t.half()     # torch.HalfTensor   torch.float16
 t.float()    # torch.FloatTensor  torch.float32
 t.double()   # torch.DoubleTensor torch.float64
 #
-t.int8()     # torch.CharTensor   torch.int8    8-bit integer (signed)
-t.uint8()    # torch.ByteTensor   torch.uint8   8-bit integer (unsigned)
+t.char()     # torch.CharTensor   torch.int8    8-bit integer (signed)
 t.byte()     # torch.ByteTensor   torch.uint8   8-bit integer (unsigned)
 t.short()    # torch.ShortTensor  torch.int16
 t.int()      # torch.IntTensor    torch.int32
@@ -636,7 +635,7 @@ Let's look at some more practical `watch -n` examples.
 
 Do you have a problem with a program eating up a disk space on some partition and you want to correlate the execution with that partition? Say, it's a partition named `/tmp`
 ```bash
-watch -n 'df -h | grep /tmp'
+watch -n 1 'df -h | grep /tmp'
 ```
 
 One critical methodology to notice here is that I carefully filter only the data I need to watch. While I can have the whole often huge output of `df` refreshing once a second, it'd make noticing the single entry very difficult. By filtering out all the noise I get the signal that I need much easier.
@@ -808,11 +807,11 @@ Step 2. Run your program that you want to test how it performs with just 3GiB of
 
 You can also copy the code from the one-liner into the beginning of your program, but it's easier to keep the separated so that your program remains clean of debug code.
 
-And how was the memory pre-allocated? Using a simple `torch.ones` allocator. For example here is how you can pre-allocate 10GiB of GPU memory:
+And how was the memory pre-allocated? Using a simple `torch.ones` allocator. For example here is how you can pre-allocate 10GiB of GPU memory (float32, 4 bytes per element):
 ```python
 import torch
 n=10
-x = torch.ones((n*2**18)).cuda().contiguous()
+x = torch.ones((n*2**28)).cuda().contiguous()
 ```
 Just make sure `x` doesn't go out of scope, since when it does the memory will get released.
 

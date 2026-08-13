@@ -122,6 +122,12 @@ When an item needs the author's judgment before it can be applied (anything that
 
 Always link to the specific source with a clickable `file:line` reference (for example `[compiled-programs/README.md:265](../compiled-programs/README.md#L265)`) so the author can jump straight to the line. Link the conflicting source the same way when citing one. Propose one item at a time and wait for approval before editing, unless the author asks for a batch.
 
+When the author approves and you apply a fix, immediately present the next open item in the same reply (same Problem / Solution / Proposal format). Do not stop at a bare "done" and wait for them to say `next`.
+
+When the author asks you to fix or change something in a proposal you already showed, re-show the **whole** corrected block, not just the changed fragment. A diff-style snippet of only the edited part forces the author to mentally reassemble the result and hides formatting damage in the surrounding lines. Re-render the entire item as it would land, every time it changes.
+
+When a proposed block is itself Markdown that contains fenced code, do not wrap the whole proposal in an outer ```` ```markdown ```` fence - the inner fence closes the outer one early and mangles the render. Present such a block as normal message content (its own fences render as intended), or describe it without nesting fences.
+
 ## Update opportunities report
 
 1. Maintain a separate file for opportunities to extend the book when new tools, workflows, or debugging techniques become relevant.
