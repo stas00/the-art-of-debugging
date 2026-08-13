@@ -173,7 +173,7 @@ pp(inspect.getmembers(a))
 $ python print_object_6.py
 [('__class__', <class '__main__.A'>),
  ('__delattr__', <method-wrapper '__delattr__' of A object at 0x104953b90>),
- ('__dict__', {}),
+ ('__dict__', {'bar': 2}),
  [...] trimmed output
  ('__weakref__', None),
  ('bar', 2),

@@ -284,6 +284,8 @@ case study: [this issue](https://github.com/pytorch/pytorch/issues/46807#issueco
 
 footnote: more useful recipes for python + gdb can be found [here](https://wiki.python.org/moin/DebuggingWithGdb).
 
+footnote: this chapter assumes you only have the binary. In the less common case where you do have the source and can recompile it, building with the compiler sanitizers - `-fsanitize=address` for memory errors (out-of-bounds, use-after-free) or `-fsanitize=undefined` for undefined behavior - will often report the offending source line directly instead of leaving you to reconstruct it from a core; see [GCC instrumentation options](https://gcc.gnu.org/onlinedocs/gcc/Instrumentation-Options.html).
+
 
 
 ## Debugging shared libraries and symbol resolution

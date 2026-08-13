@@ -326,7 +326,7 @@ torch.tensor(4, device="cuda:0")    # put on a desired device
 
 [...]
 
-# create a 1D tensor of size ⌈end−start/step⌉ with values from the interval
+# create a 1D tensor of size ⌈(end−start)/step⌉ with values from the interval
 # [start, end) taken with common difference step beginning from start.
 # defaults: start=0, step=1
 torch.arange(5)           # tensor([ 0.,  1.,  2.,  3.,  4.])
@@ -436,7 +436,7 @@ So now when you're inside `pdb` you don't need to type `next` and then `list`, y
 Now let's say you need to often dump a complex structure in a certain way. Here is an alias I discovered in someone's `~/.pdbrc`:
 
 ```bash
-alias pd for k in sorted(%1.keys()): print "%s%-15s= %-80.80s" % ("%2",k,repr(%1[k]))
+alias pd for k in sorted(%1.keys()): print("%s%-15s= %-80.80s" % ("%2",k,repr(%1[k])))
 ```
 Now you can just print `pd` in the prompt to get the above command executed - priceless!
 
@@ -511,6 +511,27 @@ python -c "$(echo -e "a='True'\nif a : print(1)")"
 python -c "import torch; exec('with torch.cuda.device(0):\n  x = torch.ones(1,1)')"
 ```
 but this is already very difficult to comprehend so the benefit is greatly reduced. Though I saved these recipes as sometimes I still want this available to me over a real program.
+
+### SLURM: salloc and srun fast debug combo
+
+If you're in a SLURM environment, do not `sbatch` the job you debug again and again, as it'll add the overhead of the SLURM manager re-allocating the nodes again and again, which, depending on a situation can take up to a minute and even longer, adding a huge repetitive additional overhead to the overhead of starting the program.
+
+Instead, run once, e.g.:
+
+```bash
+salloc --nodes=1 --ntasks-per-node=1 --exclusive --cpus-per-task=96 --gres=gpu:8 --time=6:00:00 bash
+```
+after editing the command to match your `sbatch`'s settings.
+
+And now from the new shell it opens, run `srun` as many times as needed:
+```bash
+srun ... your program
+```
+when finished or if `salloc` timed out or got `scancel`ed - make sure to exit this bash shell (`Ctrl-d`), since otherwise it'll be populate with stale `SLURM_*` environment variables.
+
+important: when you exit the shell it'll also revoke the job allocation if it's still running.
+
+note: if you don't specify `bash` at the end of `salloc` you will get auto-ssh'ed into the node that got allocated via `salloc` which you might prefer instead of remaining on the original node. But it can only work with a single node. This is somewhat similar to using the `--pty` flag.
 
 ## Watching and reproducing resource issues
 
@@ -725,6 +746,40 @@ If you have a recent NVIDIA GPU (A100, H100, and higher) you could also reshape 
 
 ## Finding the cause
 
+### Am I editing the right file and the right class?
+
+When just starting a debugging process it might take a few attempts to realize that the wrong file is being edited. That is changes are made but it's unclear if the change took place or even if it's the right file being edited.
+
+In the modern complex systems, you could be editing the source file in the GitHub repo, or its installed version and then you may have 10 different versions of it installed if you have multiple virtual environments.
+
+footnote: If you use the HF hub - it allows bundling modeling code with the model data files, and then it's even more confusing which file should be edited, since now the code is placed where you don't expect it to be. Surely, there are many other situations like this one.
+
+So my approach to quick discovery of the right file is very simple. I purposefully break the file I think I should be editing. That is if I have a file with code like:
+
+```python
+def main():
+    x = 5
+    y = 6
+```
+and I know `main` is called, I add `die`:
+```python
+def main():
+    die
+    x = 5
+    y = 6
+```
+and launch the program. If I am editing the right file the program will throw an except (and "die") and then I know I can start doing the actual debugging after removing my hack. If the program didn't die that means that either I'm not editing the right file and/or the right function.
+
+Then there is the issue of having multiple classes or functions with the same name and sometimes it can be non-trivial to find which one is the right one. Class inheritance is another use case, as it's not obvious from looking at the code if some method is overridden or not - and which one should be edited.
+
+The exact same solution can be used - find the class/method you think you are debugging and break it. Now you know for sure.
+
+There is nothing special about `die` - it can be whatever string you want that will lead to breakage at run time (not compile time). I use `die` since in Perl it's an actual built-in function and so I'm used to use it there and it so happens that it actually "works" in Python too - works as in serves my intention for the program to die.
+
+Things are a bit more complicated if the program is not interpreted but compiled, as in C/C++ languages, in which case you usually need to first run some `make` command to ensure any modified files have been recompiled. But otherwise the same principle applies - except the intentional "breaking"-process, which would be different depending on the language.
+
+For more Python nuances see [Ensuring the Python package you edit is the one that is run](../python/README.md#ensuring-the-python-package-you-edit-is-the-one-that-is-run).
+
 ### Finding a breaking commit by bisecting revisions
 
 The discussed next approach should work for any revision control system that supports bisecting. We will use `git bisect` in this discussion.
@@ -906,40 +961,6 @@ There are sometimes other complications, like when different revisions' dependen
 
 Sometimes, it helps when there is a range of commits that are actually broken in a different way, you can either find a range of `good...bad` commits that isn't including the other bad range, or you can try to `git bisect skip` the other bad commits as explained earlier.
 
-### Am I editing the right file and the right class?
-
-When just starting a debugging process it might take a few attempts to realize that the wrong file is being edited. That is changes are made but it's unclear if the change took place or even if it's the right file being edited.
-
-In the modern complex systems, you could be editing the source file in the GitHub repo, or its installed version and then you may have 10 different versions of it installed if you have multiple virtual environments.
-
-footnote: If you use the HF hub - it allows bundling modeling code with the model data files, and then it's even more confusing which file should be edited, since now the code is placed where you don't expect it to be. Surely, there are many other situations like this one.
-
-So my approach to quick discovery of the right file is very simple. I purposefully break the file I think I should be editing. That is if I have a file with code like:
-
-```python
-def main():
-    x = 5
-    y = 6
-```
-and I know `main` is called, I add `die`:
-```python
-def main():
-    die
-    x = 5
-    y = 6
-```
-and launch the program. If I am editing the right file the program will throw an except (and "die") and then I know I can start doing the actual debugging after removing my hack. If the program didn't die that means that either I'm not editing the right file and/or the right function.
-
-Then there is the issue of having multiple classes or functions with the same name and sometimes it can be non-trivial to find which one is the right one. Class inheritance is another use case, as it's not obvious from looking at the code if some method is overridden or not - and which one should be edited.
-
-The exact same solution can be used - find the class/method you think you are debugging and break it. Now you know for sure.
-
-There is nothing special about `die` - it can be whatever string you want that will lead to breakage at run time (not compile time). I use `die` since in Perl it's an actual built-in function and so I'm used to use it there and it so happens that it actually "works" in Python too - works as in serves my intention for the program to die.
-
-Things are a bit more complicated if the program is not interpreted but compiled, as in C/C++ languages, in which case you usually need to first run some `make` command to ensure any modified files have been recompiled. But otherwise the same principle applies - except the intentional "breaking"-process, which would be different depending on the language.
-
-For more Python nuances see [Ensuring the Python package you edit is the one that is run](../python/README.md#ensuring-the-python-package-you-edit-is-the-one-that-is-run).
-
 ### Juggling multiple sets of configs for different debug experiments
 
 There are times when one tweaks a single line in a single file to see a problem, but at times it can be many lines in many files. And it becomes very difficult to keep track of what's what and not make mistakes.
@@ -1034,24 +1055,3 @@ CUDA_LAUNCH_BLOCKING=1 python myprogram.py
 One side effect of activating such flags is that it changes the timing of the execution and if the async kernel had a deadlock issue, it might disappear and you won't be able to debug the deadlock issue.
 
 For the full CUDA-specific treatment - including the `CUDA_VISIBLE_DEVICES=""` CPU-fallback approach, the BLOOM-176B case study, and version caveats - see [Dealing with Async CUDA bugs](../pytorch/README.md#dealing-with-async-cuda-bugs) in the PyTorch chapter.
-
-### SLURM: salloc and srun fast debug combo
-
-If you're in a SLURM environment, do not `sbatch` the job you debug again and again, as it'll add the overhead of the SLURM manager re-allocating the nodes again and again, which, depending on a situation can take up to a minute and even longer, adding a huge repetitive additional overhead to the overhead of starting the program.
-
-Instead, run once, e.g.:
-
-```bash
-salloc --nodes=1 --ntasks-per-node=1 --exclusive --cpus-per-task=96 --gres=gpu:8 --time=6:00:00 bash
-```
-after editing the command to match your `sbatch`'s settings.
-
-And now from the new shell it opens, run `srun` as many times as needed:
-```bash
-srun ... your program
-```
-when finished or if `salloc` timed out or got `scancel`ed - make sure to exit this bash shell (`Ctrl-d`), since otherwise it'll be populate with stale `SLURM_*` environment variables.
-
-important: when you exit the shell it'll also revoke the job allocation if it's still running.
-
-note: if you don't specify `bash` at the end of `salloc` you will get auto-ssh'ed into the node that got allocated via `salloc` which you might prefer instead of remaining on the original node. But it can only work with a single node. This is somewhat similar to using the `--pty` flag.
