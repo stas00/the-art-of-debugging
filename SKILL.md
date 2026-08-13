@@ -176,7 +176,7 @@ See [dealing with async CUDA bugs](https://github.com/stas00/the-art-of-debuggin
 ### CUDA / CPU OOM
 
 - Distinguish OOM in **`forward`** (activations - batch/seq len) vs **`backward`** (gradients/optimizer state). See [debugging CUDA OOM in forward](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#debugging-cuda-oom-in-forward) / [backward](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#debugging-cuda-oom-in-backward).
-- **Fragmentation** (free memory exists but not contiguous): tune `PYTORCH_CUDA_ALLOC_CONF` (e.g. `expandable_segments:True`, `max_split_size_mb:...`). See [overcoming CUDA OOM due to memory fragmentation](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#overcoming-cuda-oom-due-to-memory-fragmentation).
+- **Fragmentation** (free memory exists but not contiguous): tune `PYTORCH_ALLOC_CONF` (e.g. `expandable_segments:True`, `max_split_size_mb:...`). See [overcoming CUDA OOM due to memory fragmentation](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#overcoming-cuda-oom-due-to-memory-fragmentation).
 - **See who allocated what** with the memory profiler / allocation tracing; probe the ceiling with the allocatable-GBs test. See [PyTorch memory profiler](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#pytorch-memory-profiler), [strategic memory allocation tracing](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#strategic-memory-allocation-tracing), [discovering allocatable GBs before OOM](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#discovering-how-many-gbs-is-allocatable-before-oom-for-cpu-and-gpu).
 - **CPU OOM / peak RAM:** see [CPU memory](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#cpu-memory).
 
@@ -224,7 +224,7 @@ For the cluster-level context around these bugs (verifying node connectivity, NC
 | Multi-GPU/node hang | minimal collective test -> `py-spy` across all ranks -> `node:rank` logs |
 | Segfault / crash in C or extension | core file + `gdb` (`bt`, `bt full`, `thread apply all bt`) |
 | Cryptic CUDA error / wrong line | `CUDA_LAUNCH_BLOCKING=1`, or run on CPU |
-| CUDA/CPU OOM | forward vs backward; fragmentation (`PYTORCH_CUDA_ALLOC_CONF`); memory profiler |
+| CUDA/CPU OOM | forward vs backward; fragmentation (`PYTORCH_ALLOC_CONF`); memory profiler |
 | NaN/Inf / wrong numbers | `set_detect_anomaly`, under/overflow detection, per-tensor stats, `lovely-tensors` |
 | "my edits do nothing" | the `die` trick; `pip install -e .` / `PYTHONPATH`; check `pkg.__file__` |
 | Who calls this? | `traceback.print_stack()` / `die` |
