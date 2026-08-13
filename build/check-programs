@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+#
+# Check that the book's reader-facing programs are still syntactically valid without running any
+# actual workload.
+#
+# Why this exists: on 2026-08-04 (in the companion `ml-engineering` book) `all_reduce_bench.py`
+# was found to have been unrunnable since 2025-12-08 - a TypeError in `parse_args` on every
+# invocation. A compile check would not have caught that particular defect; `--help` would have.
+# This book mostly ships library / demo modules and CLI helpers that import heavy deps
+# (`datasets`, `torch`) at module level before argparse, so `--help` is not a reliable laptop
+# check here. `py_compile` still catches the class of "file no longer parses" breakage.
+#
+# Modules that need a distributed/GPU environment to *run* (e.g. `torch-distributed-gpu-test.py`)
+# are still compiled: syntax errors are environment-independent.
+#
+# usage: build/check-programs
+#        PYTHON=python3.12 build/check-programs
+
+set -uo pipefail
+
+cd "$(dirname "$0")/.."
+
+# The book's reader-facing programs - the ones a reader copies out of a chapter. Build tooling
+# is deliberately out of scope. Add new ones here.
+PROGRAMS=(
+    pytorch/NicerTrace.py
+    pytorch/printflock.py
+    pytorch/underflow_overflow.py
+    pytorch/code/see-mem-usage.py
+    pytorch/torch-distributed-gpu-test.py
+    pytorch/tiny-scripts/cm4-synthetic-testing.py
+    pytorch/tiny-scripts/general-pmd-synthetic-testing.py
+    pytorch/tiny-scripts/mt5-make-tiny-model.py
+    pytorch/tiny-scripts/fsmt-make-super-tiny-model.py
+    pytorch/tiny-scripts/idefics-make-tiny-model.py
+    pytorch/tiny-scripts/c4-en-10k.py
+    pytorch/tiny-scripts/openwebtext-10k.py
+    pytorch/tiny-scripts/oscar-en-10k.py
+    pytorch/tiny-scripts/m4-ds-unpack.py
+    pytorch/tiny-scripts/general-pmd-ds-unpack.py
+)
+
+PYTHON=${PYTHON:-python}
+
+TIMEOUT=()
+for t in timeout gtimeout; do
+    if command -v "$t" >/dev/null 2>&1; then
+        TIMEOUT=("$t" 120)
+        break
+    fi
+done
+
+status=0
+for prog in "${PROGRAMS[@]}"; do
+    printf '%-56s ' "$prog"
+
+    if [[ ! -f $prog ]]; then
+        printf 'MISSING\n'
+        status=1
+        continue
+    fi
+
+    if out=$("${TIMEOUT[@]}" "$PYTHON" -m py_compile "$prog" 2>&1); then
+        printf 'ok\n'
+    else
+        printf 'FAILED\n'
+        printf '%s\n' "$out" | tail -3 | sed 's/^/    /'
+        status=1
+    fi
+done
+
+if (( status != 0 )); then
+    printf '\nAt least one program failed to compile. It is broken for every reader who copies it.\n'
+fi
+
+exit "$status"
