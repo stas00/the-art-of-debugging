@@ -1,5 +1,16 @@
 # Debugging Python Programs
 
+## Choosing the right approach
+
+The techniques in this chapter fall into a few families, and picking the right one first saves a lot of time:
+
+- **Print-based** ([q](#q), [printing object variables](#printing-object-variables), [auto-print](#auto-print-whats-being-observed), [who is calling?](#who-is-calling)) - inject output into the code and re-run. Cheap, needs no tooling, and it keeps working when the program is spread over many processes. Often it's the only practical option inside a tight loop or a hot path, where stopping at a breakpoint on every iteration would take forever. The cost is a re-run for each new question.
+- **Interactive** ([pdb attach](#attaching-pdb-to-a-running-process), [IPython `embed()`](#dropping-into-ipython-with-embed), [IDE debuggers](#ide-debuggers)) - stop the program and ask it anything, without re-running. Best when the state is complex or you don't yet know what to print, since one stop answers many questions. The cost is that it halts the process, which gets awkward in multi-process runs.
+- **Observing from the outside** ([py-spy](#py-spy)) - read the stack of a process that is already running, without stopping or modifying it. This is the one to reach for when a program is already hung and you can't afford to restart it.
+- **Profilers** ([cProfile](#cprofile), [line_profiler](#line_profiler)) - for when nothing is broken except the speed, and the question is where the time actually goes.
+
+As a rough rule of thumb: print when the question is "what is this value, across many iterations"; an interactive debugger when it's "what on earth is going on here, right now"; `py-spy` when the program is already stuck; and a profiler when the only symptom is slowness.
+
 ## Print-based techniques
 
 ### q
@@ -398,9 +409,31 @@ and check that the paths are correct.
 
 It's covered in depth, with worked examples and multi-process/multi-node recipes, in the PyTorch chapter - see [py-spy](../pytorch/README.md#py-spy). While the examples there use PyTorch, the tool and the techniques apply to any Python program.
 
+## Interactive debugging
+
 ### Attaching pdb to a running process
 
 Since Python 3.14 you can also attach `pdb` to an *already-running* process by PID (`python -m pdb -p PID`) without having planted a breakpoint in advance - the debugger counterpart to a `py-spy` dump, except it stops the process and lets you inspect and evaluate live state. It's covered with a worked example in the PyTorch chapter - see [Attaching pdb to an already-running process](../pytorch/README.md#attaching-pdb-to-an-already-running-process). It works for any Python 3.14+ program, not just PyTorch.
+
+### Dropping into IPython with `embed()`
+
+`pdb` is the standard way to halt a Python program and look around - the attach recipe above and the [`~/.pdbrc` aliases](../methodology/README.md#automate-diagnostics-minimize-or-avoid-typing) in the methodology chapter cover it. But sometimes you don't want a stepping debugger - you want a full interactive shell parked in the middle of your program, with tab-completion and the surrounding namespace already loaded. `IPython.embed()` does exactly that:
+
+```python
+a = 5
+from IPython import embed; embed()
+print(a)
+```
+
+When execution reaches `embed()` the program pauses and hands you a full IPython prompt that shares the surrounding scope. You can inspect variables, evaluate expressions, call functions and import modules; at module scope you can even reassign a variable and have the change persist - set `a = 99` at the prompt, exit, and the `print(a)` above prints `99` (inside a function, edits to *local* variables won't necessarily survive the resume). Leave the shell with Ctrl-D (IPython asks you to confirm) or `exit`, and the program continues from where it paused.
+
+Think of it as a lighter `pdb`: you get introspection and live mutation of state, but no breakpoints or stepping - and it needs `pip install ipython`. The standard library ships the same idea in smaller form: `breakpoint()` (Python 3.7+, which drops you into `pdb`) and `code.interact(local=locals())` (a plain REPL with no extra dependency).
+
+### IDE debuggers
+
+XXX: this section is just starting out
+
+The two sections above are terminal-driven - you type commands at a prompt. The other major family is the graphical debugger built into an IDE, where the breakpoints, the call stack, the source and the variable inspector are all on the screen at once. [PyCharm](https://www.jetbrains.com/pycharm/) and [VSCode](https://code.visualstudio.com/) both ship excellent Python debuggers, and they are particularly good at browsing large data structures - see [the note on inspecting tensors](../pytorch/README.md#debugging-tensors) in the PyTorch chapter.
 
 ## Profilers
 
