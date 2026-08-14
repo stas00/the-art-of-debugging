@@ -398,6 +398,10 @@ and check that the paths are correct.
 
 It's covered in depth, with worked examples and multi-process/multi-node recipes, in the PyTorch chapter - see [py-spy](../pytorch/README.md#py-spy). While the examples there use PyTorch, the tool and the techniques apply to any Python program.
 
+### Attaching pdb to a running process
+
+Since Python 3.14 you can also attach `pdb` to an *already-running* process by PID (`python -m pdb -p PID`) without having planted a breakpoint in advance - the debugger counterpart to a `py-spy` dump, except it stops the process and lets you inspect and evaluate live state. It's covered with a worked example in the PyTorch chapter - see [Attaching pdb to an already-running process](../pytorch/README.md#attaching-pdb-to-an-already-running-process). It works for any Python 3.14+ program, not just PyTorch.
+
 ## Profilers
 
 When a program runs slower than desired, or if the compute is expensive, often it's possible to rewrite parts of the program to make it faster. For example, if some function is run in a loop, repeating hundreds of thousands of times speeding it up just a little bit can make the total runtime much faster. Very often 20% of the code contributes to 80% of execution time, so finding that code and optimizing it should improve the performance. It also helps to understand where it's worthwhile to invest the optimization efforts.
