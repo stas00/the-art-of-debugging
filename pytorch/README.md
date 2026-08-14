@@ -2828,7 +2828,7 @@ torchrun --standalone --nproc_per_node=2 collective_mismatch.py
 
 footnote: `TORCH_FR_BUFFER_SIZE` and `TORCH_FR_DUMP_TEMP_FILE` were named `TORCH_NCCL_TRACE_BUFFER_SIZE` and `TORCH_NCCL_DEBUG_INFO_TEMP_FILE` before PyTorch 2.9; the old names still work but warn. These `TORCH_NCCL_*`/`TORCH_FR_*` variables are PyTorch-level controls, distinct from NCCL's own `NCCL_*` variables such as `NCCL_DEBUG`.
 
-On timeout each rank writes `/tmp/fr<rank>`. The helper script[collective_mismatch_analyze.py](collective_mismatch_analyze.py) loads the pickle file and, for each collective that did not complete, prints its call site and callers with torch's own frames stripped out:
+On timeout each rank writes `/tmp/fr<rank>`. The helper script [collective_mismatch_analyze.py](collective_mismatch_analyze.py) loads the pickle file and, for each collective that did not complete, prints its call site and callers with torch's own frames stripped out:
 ```python
 #!/usr/bin/env python
 import pickle, glob, os, torch
