@@ -658,37 +658,73 @@ lrwxrwxrwx 1 root root   20 Dec 19  2021 /usr/lib/x86_64-linux-gnu/libcrypto++.s
 ```
 you can also see that each major `.so` version is a symlink to the full `major.minor.patch` version (e.g. `6` -> `6.0.0`).
 
-Yet, at other times the same library with the same version can be found in various directories:
+Yet, at other times the same library with the same version can be found in various directories (the CUDA 12.9/13.0 listing below is just an example - your toolkit versions will differ, but the failure mode is the same):
 ```bash
 $ find /usr/local/cuda* | grep libnvvm\.so | sort
-/usr/local/cuda-11.7/nvvm/lib64/libnvvm.so.4
-/usr/local/cuda-11.7/nvvm/lib64/libnvvm.so.4.0.0
-/usr/local/cuda-12.2/nvvm/lib64/libnvvm.so.4
-/usr/local/cuda-12.2/nvvm/lib64/libnvvm.so.4.0.0
+/usr/local/cuda-12.9/nvvm/lib64/libnvvm.so
+/usr/local/cuda-12.9/nvvm/lib64/libnvvm.so.4
+/usr/local/cuda-12.9/nvvm/lib64/libnvvm.so.4.0.0
+/usr/local/cuda-13.0/nvvm/lib64/libnvvm.so
+/usr/local/cuda-13.0/nvvm/lib64/libnvvm.so.4
+/usr/local/cuda-13.0/nvvm/lib64/libnvvm.so.4.0.0
 ```
 
 So depending on which of the prefix paths are set to search that version will be loaded. Having your dynamic loader find the wrong version of the library is what typically leads to missing symbols and/or segfaults. In this particular case the shared library `libnvvm.so` isn't the same in the 2 folders despite having identical names and version numbers:
 ```bash
-$ diff /usr/local/cuda-11.7/nvvm/lib64/libnvvm.so.4.0.0 /usr/local/cuda-12.2/nvvm/lib64/libnvvm.so.4.0.0
-Binary files /usr/local/cuda-11.7/nvvm/lib64/libnvvm.so.4.0.0 and /usr/local/cuda-12.2/nvvm/lib64/libnvvm.so.4.0.0 differ
+$ diff /usr/local/cuda-12.9/nvvm/lib64/libnvvm.so.4.0.0 /usr/local/cuda-13.0/nvvm/lib64/libnvvm.so.4.0.0
+Binary files /usr/local/cuda-12.9/nvvm/lib64/libnvvm.so.4.0.0 and /usr/local/cuda-13.0/nvvm/lib64/libnvvm.so.4.0.0 differ
 ```
 
-Therefore it's crucial that the path `/usr/local/cuda-12.2/nvvm/lib64/` is in `LD_LIBRARY_PATH` when you want to load an application that relies on cuda-12.2. If you have `/usr/local/cuda-11.7/nvvm/lib64/` in there instead, it's very possible the application may crash or complain about some symbol is missing.
+Therefore it's crucial that the path `/usr/local/cuda-13.0/nvvm/lib64/` is in `LD_LIBRARY_PATH` when you want to load an application that relies on cuda-13.0. If you have `/usr/local/cuda-12.9/nvvm/lib64/` in there instead, it's very possible the application may crash or complain about some symbol is missing.
 
 case study: in other situations a symbol could be missing because the program wasn't linked properly at build time. Here is
 a bug report [undefined symbol curandCreateGenerator for torch extensions](https://github.com/pytorch/pytorch/issues/69666) that demonstrates this exact issue.
+
+### Finding which library actually loads
+
+The versions in the example above are illustrative - do not copy `cuda-12.9`/`cuda-13.0` literally; your machine will have different toolkits. The procedure that stays true is: find which file a name *actually* resolves to, then confirm what the loader picks at runtime. Substitute your own `<cuda-version>`.
+
+Most installs expose a `/usr/local/cuda` symlink that points at the active toolkit, so follow it to the real file with `readlink -f`:
+```bash
+$ readlink -f /usr/local/cuda/nvvm/lib64/libnvvm.so
+/usr/local/cuda-13.0/nvvm/lib64/libnvvm.so.4.0.0
+```
+That points to whichever toolkit the default `/usr/local/cuda` symlink resolves to - but it is not the last word: `CUDA_HOME`, `PATH` and `LD_LIBRARY_PATH` can each send a build or a run at a different toolkit. Treat it as one input and let the runtime check below (`ldd` / `LD_DEBUG=libs`) settle what is *actually* loaded. When two toolkits are installed, the same-named files are genuinely different binaries - `cmp` proves it without dumping anything:
+```bash
+$ cmp /usr/local/cuda-12.9/nvvm/lib64/libnvvm.so.4.0.0 /usr/local/cuda-13.0/nvvm/lib64/libnvvm.so.4.0.0
+/usr/local/cuda-12.9/nvvm/lib64/libnvvm.so.4.0.0 /usr/local/cuda-13.0/nvvm/lib64/libnvvm.so.4.0.0 differ: byte 25, line 1
+```
+For libraries the linker records in the cache (`libcudart` and friends), `ldconfig -p` lists every version the loader knows about:
+```bash
+ldconfig -p | grep -Ei 'libcudart|libnvvm'
+```
+Finally, confirm what actually gets loaded rather than what you think should. `ldd` shows the resolved path for a program's direct dependencies, and `LD_DEBUG=libs` shows the loader's search live:
+```bash
+$ ldd ./myprogram | grep -i cudart
+	libcudart.so.13 => /usr/local/cuda/targets/x86_64-linux/lib/libcudart.so.13 (0x00007f90cda00000)
+
+$ LD_DEBUG=libs ./myprogram 2>&1 | grep -i cudart
+      1250:	find library=libcudart.so.13 [0]; searching
+      1250:	 search cache=/etc/ld.so.cache
+      1250:	  trying file=/usr/local/cuda/targets/x86_64-linux/lib/libcudart.so.13
+```
+`LD_DEBUG=libs` is the definitive check: it prints each search directory in order and the file it settled on, so when the wrong version is picked you can see exactly which path won. (`LD_DEBUG=help ./myprogram` lists the other categories.)
+
+Two layout notes. Package-manager installs and NVIDIA's `.run` installs put files in different places - a distro `nvidia-cuda-toolkit` package spreads libraries under `/usr/lib/x86_64-linux-gnu`, while a runfile keeps them under `/usr/local/cuda-<version>` - so resolve by following the symlinks rather than assuming a layout. And `LD_PRELOAD` (next section) is a diagnostic way to force one specific file to confirm a version mismatch is the cause; it is not the permanent fix, which is to correct the search path or the packaging.
+
+Primary reference: [NVIDIA CUDA installation guide for Linux](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/).
 
 ### LD_PRELOAD
 
 Let's introduce the `LD_PRELOAD` environment variable, which has multiple purposes, but which can also be used to ensure that the exact desired shared library is loaded, typically when there are multiple libraries with the same name in the library search path. Most of the time this is used as a workaround, since properly packaged distributed shared libraries should already do the right thing.
 
-Following the listing in the previous section, you can force the use of `libnvvm.so` version from `cuda-11.7` with:
+Following the listing in the previous section, you can force the use of `libnvvm.so` version from `cuda-12.9` with:
 ```bash
-LD_PRELOAD=/usr/local/cuda-11.7/nvvm/lib64/libnvvm.so.4.0.0 myprogram
+LD_PRELOAD=/usr/local/cuda-12.9/nvvm/lib64/libnvvm.so.4.0.0 myprogram
 ```
-or from `cuda-12.2` with:
+or from `cuda-13.0` with:
 ```bash
-LD_PRELOAD=/usr/local/cuda-12.2/nvvm/lib64/libnvvm.so.4.0.0 myprogram
+LD_PRELOAD=/usr/local/cuda-13.0/nvvm/lib64/libnvvm.so.4.0.0 myprogram
 ```
 
 footnote: the main use of this environment variable is to intentionally override various APIs. The APIs loaded via this environment variable take precedence over the same APIs loaded by other shared libraries.
