@@ -161,8 +161,8 @@ Full chapter: [Debugging PyTorch Programs](https://github.com/stas00/the-art-of-
 ### Debug fast
 
 Shrink the model, not the problem - make a full run finish in seconds:
-- **Fewer layers** via (1) a local clone with config edits, (2) editing the config object on the fly, or (3) hacking the modeling code. See [reducing the number of layers](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#reducing-the-number-of-layers-for-large-models).
-- **Tiny random model + tiny tokenizer + tiny dataset** for near-instant iterations; reproduce at full scale only for scale-only bugs. See [making a tiny model](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#making-a-tiny-model) and [faster debug with tiny models, tokenizers and datasets](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#faster-debug-and-development-with-tiny-models-tokenizers-and-datasets).
+- **Fewer layers** via (1) a local clone with config edits, (2) editing the config object on the fly, or (3) hacking the modeling code. See [reducing the number of layers](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#reducing-the-number-of-layers-for-large-models).
+- **Tiny random model + tiny tokenizer + tiny dataset** for near-instant iterations; reproduce at full scale only for scale-only bugs. See [making a tiny model](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#making-a-tiny-model) and [faster debug with tiny models, tokenizers and datasets](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#faster-debug-and-development-with-tiny-models-tokenizers-and-datasets).
 
 ### Cryptic CUDA errors
 
@@ -171,21 +171,21 @@ CUDA is async, so the reported line is usually wrong. Force a real traceback:
 CUDA_LAUNCH_BLOCKING=1 python prog.py   # sync CUDA -> accurate Python traceback
 CUDA_VISIBLE_DEVICES="" python prog.py  # run on CPU (if feasible) for the clearest traceback
 ```
-See [dealing with async CUDA bugs](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#dealing-with-async-cuda-bugs).
+See [dealing with async CUDA bugs](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#dealing-with-async-cuda-bugs).
 
 ### CUDA / CPU OOM
 
-- Distinguish OOM in **`forward`** (activations - batch/seq len) vs **`backward`** (gradients/optimizer state). See [debugging CUDA OOM in forward](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#debugging-cuda-oom-in-forward) / [backward](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#debugging-cuda-oom-in-backward).
-- **Fragmentation** (free memory exists but not contiguous): tune `PYTORCH_ALLOC_CONF` (e.g. `expandable_segments:True`, `max_split_size_mb:...`). See [overcoming CUDA OOM due to memory fragmentation](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#overcoming-cuda-oom-due-to-memory-fragmentation).
-- **See who allocated what** with the memory profiler / allocation tracing; probe the ceiling with the allocatable-GBs test. See [PyTorch memory profiler](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#pytorch-memory-profiler), [strategic memory allocation tracing](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#strategic-memory-allocation-tracing), [discovering allocatable GBs before OOM](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#discovering-how-many-gbs-is-allocatable-before-oom-for-cpu-and-gpu).
-- **CPU OOM / peak RAM:** see [CPU memory](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#cpu-memory).
+- Distinguish OOM in **`forward`** (activations - batch/seq len) vs **`backward`** (gradients/optimizer state). See [debugging CUDA OOM in forward](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#debugging-cuda-oom-in-forward) / [backward](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#debugging-cuda-oom-in-backward).
+- **Fragmentation** (free memory exists but not contiguous): tune `PYTORCH_ALLOC_CONF` (e.g. `expandable_segments:True`, `max_split_size_mb:...`). See [overcoming CUDA OOM due to memory fragmentation](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#overcoming-cuda-oom-due-to-memory-fragmentation).
+- **See who allocated what** with the memory profiler / allocation tracing; probe the ceiling with the allocatable-GBs test. See [PyTorch memory profiler](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#pytorch-memory-profiler), [strategic memory allocation tracing](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#strategic-memory-allocation-tracing), [discovering allocatable GBs before OOM](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#discovering-how-many-gbs-is-allocatable-before-oom-for-cpu-and-gpu).
+- **CPU OOM / peak RAM:** see [CPU memory](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#cpu-memory).
 
 ### NaN/Inf & wrong numbers
 
 ```python
 torch.autograd.set_detect_anomaly(True)   # pinpoint the op that first produced NaN/Inf in backward
 ```
-Find where bad values first appear; watch fp underflow/overflow (especially fp16/bf16); expect small, benign cross-device numeric differences. Inspect tensors compactly (shape/device/dtype/stats) and use `lovely-tensors` for one-line summaries that surface bad tensors fast. See [detecting problematic tensor values](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#detecting-problematic-tensor-values), [underflow and overflow detection](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#underflow-and-overflow-detection), [floating point discrepancies across devices](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#floating-point-math-discrepancies-on-different-devices), [dumping tensor values](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#many-ways-to-dump-tensors-values), and [auto-dumping tensor attributes](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#auto-dumping-desired-tensor-attributes).
+Find where bad values first appear; watch fp underflow/overflow (especially fp16/bf16); expect small, benign cross-device numeric differences. Inspect tensors compactly (shape/device/dtype/stats) and use `lovely-tensors` for one-line summaries that surface bad tensors fast. See [detecting problematic tensor values](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#detecting-problematic-tensor-values), [underflow and overflow detection](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#underflow-and-overflow-detection), [floating point discrepancies across devices](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#floating-point-math-discrepancies-on-different-devices), [dumping tensor values](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#many-ways-to-dump-tensors-values), and [auto-dumping tensor attributes](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#auto-dumping-desired-tensor-attributes).
 
 ### Segfault in a PyTorch/NCCL extension
 
@@ -194,14 +194,14 @@ Same core-file + gdb flow as compiled programs, but **activate the exact python 
 conda activate my-env
 gdb python core-python-...      # then: bt / thread apply all bt
 ```
-See [segfaults and getting a backtrace from a core file](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#segfaults-and-getting-a-backtrace-from-a-core-file).
+See [segfaults and getting a backtrace from a core file](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#segfaults-and-getting-a-backtrace-from-a-core-file).
 
 ### Multi-GPU / multi-node hang or deadlock
 
-1. **Verify comms first** with a minimal all-reduce test (`torch-distributed-gpu-test.py`); rule out network/NCCL before app code. See [getting nodes to talk to each other](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#getting-nodes-to-talk-to-each-other) and [InfiniBand connection](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#solving-the-infiniband-connection-between-multiple-nodes).
-2. **Dump every rank's stack at once** with `py-spy` (recipes for python/deepspeed/accelerate, across nodes via `srun`/`pdsh`). Ranks stuck at *different* lines reveal the desync (a mismatched collective). See [diagnosing crashes, hangs and tracing execution](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#diagnosing-crashes-hangs-and-tracing-execution).
-3. **Make distributed output legible:** prefix every log line with `node:rank`, and target `pdb` at one rank. See [prefixing logs](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#prefixing-logs-with-noderank-interleaved-asserts), [pdb on a specific rank](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#invoke-pdb-on-a-specific-rank-in-multi-node-training).
-4. **Narrow further:** check for a [network-level hang](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#network-level-hanging), [isolate a bad GPU](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#isolate-problematic-gpus), or trace line-by-line with the [python `trace`](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#python-trace) module. On AMD, a slow/hung run may be [IOMMU-related](https://github.com/stas00/ml-engineering/blob/master/compute/accelerator/amd/debug.md#hangs-or-slow-multi-gpu-runs-and-iommu).
+1. **Verify comms first** with a minimal all-reduce test (`torch-distributed-gpu-test.py`); rule out network/NCCL before app code. See [getting nodes to talk to each other](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#getting-nodes-to-talk-to-each-other) and [InfiniBand connection](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#solving-the-infiniband-connection-between-multiple-nodes).
+2. **Dump every rank's stack at once** with `py-spy` (recipes for python/deepspeed/accelerate, across nodes via `srun`/`pdsh`). Ranks stuck at *different* lines reveal the desync (a mismatched collective). See [diagnosing crashes, hangs and tracing execution](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#diagnosing-crashes-hangs-and-tracing-execution).
+3. **Make distributed output legible:** prefix every log line with `node:rank`, and target `pdb` at one rank. See [prefixing logs](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#prefixing-logs-with-noderank-interleaved-asserts), [pdb on a specific rank](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#invoke-pdb-on-a-specific-rank-in-multi-node-training).
+4. **Narrow further:** check for a [network-level hang](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#network-level-hanging), [isolate a bad GPU](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#isolate-problematic-gpus), or trace line-by-line with the [python `trace`](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#python-trace) module. On AMD, a slow/hung run may be [IOMMU-related](https://github.com/stas00/ml-engineering/blob/master/compute/accelerator/amd/debug.md#hangs-or-slow-multi-gpu-runs-and-iommu).
 
 For the cluster-level context around these bugs (verifying node connectivity, NCCL/InfiniBand tuning, network benchmarking, checkpointing/fault tolerance), see [Machine Learning Engineering](https://github.com/stas00/ml-engineering/blob/master/SKILL.md).
 
@@ -213,8 +213,8 @@ For the cluster-level context around these bugs (verifying node connectivity, NC
   s.record(); run(); e.record(); torch.cuda.synchronize()
   ms = s.elapsed_time(e)
   ```
-  See [measuring durations](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#measuring-durations).
-- **Profile ops** with `torch.profiler` (CPU+GPU, op-level, small overhead); when it's not enough, drop to `cProfile` for pure-Python hot spots. See [performance and profiling](https://github.com/stas00/the-art-of-debugging/blob/master/pytorch/README.md#performance-and-profiling).
+  See [measuring durations](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#measuring-durations).
+- **Profile ops** with `torch.profiler` (CPU+GPU, op-level, small overhead); when it's not enough, drop to `cProfile` for pure-Python hot spots. See [performance and profiling](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#performance-and-profiling).
 
 ## Pick the tool by symptom
 
