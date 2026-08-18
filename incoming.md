@@ -2,39 +2,9 @@
 
 Please ignore this file. This is just a dump of ideas that I'd like to expand on in the future
 
-## python debug
-
-put this in the code
-```
-a = 5
-from IPython import embed; embed()
-print(a)
-```
-it acts somewhat like a limited version of pdb: it allows you to introspect and change variables, then when finished and exited with 
-Ctrl-D, it will continue running the program with modified variables.
-
-## resources
-
-https://missing.csail.mit.edu/2020/debugging-profiling/
-
-
 ## misc topics
 
 - randomization - or rather determinism
-
-
-## strace
-
-Say you get a: "No space left on device" traceback, but it doesn't tell you which file it failed to write to.
-
-You could try to go and figure out where the file handle was opened in the code, but often it can be far from trivial.
-
-strace comes to help:
-
-
-```
-687222 openat(AT_FDCWD, "/tmp/tmp5_gxu46v", O_RDONLY|O_CLOEXEC <unfinished ...>
-```
 
 
 ## blackbox approach to complex systems
@@ -52,12 +22,6 @@ Tools like [PyCharm](https://www.jetbrains.com/pycharm/) and
 [VSCode](https://code.visualstudio.com/) have awesome visual python debuggers.
 
 
-
-
-## Debugging Unix Tools:
-
-bash -x, bash -eo pipe
-make -n
 
 
 ## Users wishlist
