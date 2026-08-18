@@ -174,6 +174,9 @@ $ bash ./test.sh
 ```
 you can instantly see that something is wrong with `x`.
 
+You can accomplish the same functionality as adding `set -x` with just calling `bash -x ./test.sh`, which turns the tracer on from the outside and you will get the same trace.
+
+Finally, if you see `set -o xtrace` - it's the same as `set -x`.
 
 
 
