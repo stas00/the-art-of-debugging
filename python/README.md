@@ -429,11 +429,15 @@ When execution reaches `embed()` the program pauses and hands you a full IPython
 
 Think of it as a lighter `pdb`: you get introspection and live mutation of state, but no breakpoints or stepping - and it needs `pip install ipython`. The standard library ships the same idea in smaller form: `breakpoint()` (Python 3.7+, which drops you into `pdb`) and `code.interact(local=locals())` (a plain REPL with no extra dependency).
 
+### ipdb
+
+The `embed()` and `pdb` approaches above look like a choice between stepping and ergonomics, but you can have both: `ipdb` (`pip install ipdb`) is `pdb`'s debugger driving IPython's interface. `import ipdb; ipdb.set_trace()` gives you the familiar `pdb` commands, plus tab-completion, syntax highlighting, and a few lines of surrounding source at every stop instead of just the current line. Two entry points are worth knowing. `PYTHONBREAKPOINT=ipdb.set_trace` makes the built-in `breakpoint()` open `ipdb` rather than `pdb`, so you can switch debuggers without touching the code. And `python -m ipdb -c continue script.py` runs the program normally, then drops you into a post-mortem session at the frame that raised - so an unexpected traceback becomes an interactive session instead of another run with added prints.
+
 ### IDE debuggers
 
 XXX: this section is just starting out
 
-The two sections above are terminal-driven - you type commands at a prompt. The other major family is the graphical debugger built into an IDE, where the breakpoints, the call stack, the source and the variable inspector are all on the screen at once. [PyCharm](https://www.jetbrains.com/pycharm/) and [VSCode](https://code.visualstudio.com/) both ship excellent Python debuggers, and they are particularly good at browsing large data structures - see [the note on inspecting tensors](../pytorch/README.md#debugging-tensors) in the PyTorch chapter.
+The sections above are terminal-driven - you type commands at a prompt. The other major family is the graphical debugger built into an IDE, where the breakpoints, the call stack, the source and the variable inspector are all on the screen at once. [PyCharm](https://www.jetbrains.com/pycharm/) and [VSCode](https://code.visualstudio.com/) both ship excellent Python debuggers, and they are particularly good at browsing large data structures - see [the note on inspecting tensors](../pytorch/README.md#debugging-tensors) in the PyTorch chapter.
 
 ## Profilers
 

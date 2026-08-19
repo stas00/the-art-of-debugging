@@ -45,6 +45,10 @@
 5. Prefer the derivation the reader can redo with the numbers in front of them, even when a hidden value would be more direct.
 6. Concrete failure (companion book): a network section derived an elapsed time from an `algbw` figure that lived only in chat-pasted benchmark output, while the section's own table showed only `busbw`. The fix was to recover the time from the table value the reader can see.
 7. When quoting or computing from a script's output, adopt the script's own unit definitions rather than assuming them. A script that prints `1GiB = 2**30 Bytes` alongside `1GBps = 10**9 Bytes per second` needs the base conversion in a `GiB / GBps` division.
+8. Write from the reader's position, not from the conversation's. The prompt, the research, the fodder pasted into chat, and the reasoning that produced a section are not part of the book - the reader has the chapter and nothing else. Before sending new text, re-read it as someone who has read the preceding sections of that chapter and none of the surrounding discussion.
+9. Check every term, acronym, tool name, flag, and reference on first use against that standard: can the reader make sense of it from earlier content in this chapter, or from a cross-link that explains it? If not, expand it in place, link the section that does explain it, or cut it. An unexplained term is worse than an omitted one, because it stops the reader without telling them what they are missing.
+10. Concrete failure: an `ltrace` draft explained an empty trace with "it only sees calls that go through the executable's PLT" while the chapter never says what a PLT is, so for the reader the sentence carried no information at all.
+11. The same standard forbids narrating the writing process or the placement decision. "So `ltrace` belongs to this chapter's world" only parses for someone who watched the section get assigned to a chapter; the reader needs the criterion for when the tool applies, stated directly. Cut the meta rather than rephrasing it.
 
 ## Measured, derived, or assumed
 
