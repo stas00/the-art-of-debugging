@@ -766,3 +766,57 @@ way2=0.06159617658704519
 Which gives us yet another outcome, here `math.pow` is only about 2x slower than `**`.
 
 One thing to observe here is that 3 different measurement approaches give very different results. Since what usually matters is the relative performance of one approach versus another, the exact method probably doesn't matter as long as you consistently use the same one.
+
+### Flame graphs with py-spy
+
+Both profilers above need you to re-run the program with instrumentation in place. `py-spy` needs neither - it samples the interpreter from outside the process and writes the result as a flame graph, either for a program it launches itself or for one that is already running. The same tool is covered for hang diagnosis in [py-spy](../pytorch/README.md#py-spy).
+
+Here is a program to profile:
+
+```python
+# profile_me.py
+def tokenize(n):
+    return [i % 97 for i in range(n)]
+
+def embed(toks):
+    return sum(t * t for t in toks)
+
+def step():
+    return embed(tokenize(20000))
+
+for _ in range(20000):
+    step()
+```
+
+Let `py-spy` launch it:
+```bash
+$ py-spy record -o profile.svg -- python profile_me.py
+py-spy> Sampling process 100 times a second. Press Control-C to exit.
+
+
+py-spy> Stopped sampling because process exited
+py-spy> Wrote flamegraph data to 'profile.svg'. Samples: 1643 Errors: 0
+```
+and open the SVG in a browser:
+
+![py-spy flame graph](images/py-spy-flamegraph.png)
+
+Every frame is labelled `function (file:line)` with the line that was executing, and that is what ties the picture back to the listing above: `<module> (profile_me.py:12)` is the `step()` call in the loop, `step (profile_me.py:9)` is its `return embed(tokenize(20000))`, and both `embed` and its `<genexpr>` sit at line 6 - the `sum()` and the generator expression inside it. One consequence worth knowing: a function that calls out from several different lines shows up as one box per call site, not as a single merged box.
+
+Boxes stacked on top of a box are the functions it called. A box's width is the share of samples it appeared in, so the widest boxes are where the time went - here `embed` takes roughly 60% of the samples against `tokenize`'s 40%. The horizontal axis is *not* time: identical stacks are merged and sorted by name, so width means "in many samples", not "in one long stretch". The narrow column at the right edge is the interpreter's own start-up, which got sampled too because `py-spy` launched the program. Click any box in the SVG to zoom into that part of the tree.
+
+`py-spy record` can also attach to a process that is already running - give it a PID and a number of seconds instead of a program to launch:
+```bash
+py-spy record -p PID -d 6 -o profile.svg
+```
+which is useful when a job has been running and restarting isn't not desirable.
+
+For code that spends its time in C or C++ extensions, add `--native` and the native frames appear too, so a PyTorch stack shows the `at::` internals underneath your Python calls. It is much more expensive, and when `py-spy` can't keep up it might say something like:
+```
+py-spy> 7.92s behind in sampling, results may be inaccurate. Try reducing the sampling rate
+```
+Lower the sampling rate with `-r` when that happens - the default is 100 samples per second.
+
+Finally, `py-spy record -f speedscope` writes the profile for [speedscope](https://www.speedscope.app/) instead of an SVG, which adds a time-ordered view of the samples that a flame graph deliberately discards. Here is what it looks like (width truncated to fit):
+
+![py-spy flame graph speedscope](images/py-spy-flamegraph-speedscope.png)
