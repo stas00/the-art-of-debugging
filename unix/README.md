@@ -509,9 +509,19 @@ If you're working inside a container, that one-buffer-per-machine rule has two c
 
 When the question is specifically "was I killed for memory?", you don't need `dmesg` at all - the cgroup your processes live in keeps its own counters, and reading them needs no privileges:
 ```bash
-cat /sys/fs/cgroup$(cut -d: -f3 /proc/self/cgroup)/memory.events
+$ cat /sys/fs/cgroup$(cut -d: -f3 /proc/self/cgroup)/memory.events
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+oom_group_kill 0
 ```
-`/proc/self/cgroup` names your own cgroup, so this reads the counters for wherever you happen to be - your login session on a host, or the container as a whole inside one. The path is doing real work here: the top of the hierarchy has no memory files at all, so `/sys/fs/cgroup/memory.events` on its own exists only in a container that was given a view of just its own cgroup. A non-zero `oom_kill` means the kernel killed something in that cgroup, and `memory.peak` against `memory.max` in the same directory tells you how close you came. These are cgroup v2 names; v1 spelled the same things differently (`memory.limit_in_bytes`, `memory.failcnt`), but you are unlikely to meet it on a current node - if `/sys/fs/cgroup/cgroup.controllers` exists, you're on v2.
+`/proc/self/cgroup` names your own cgroup, so this reads the counters for wherever you happen to be - your login session on a host, or the container as a whole inside one. The path is doing real work here: the top of the hierarchy has no memory files at all, so `/sys/fs/cgroup/memory.events` on its own exists only in a container that was given a view of just its own cgroup. All zeros is the healthy answer - nothing in this cgroup has been throttled or killed. A non-zero `oom_kill` means the kernel killed something in that cgroup, and `memory.peak` against `memory.max` in the same directory tells you how close you came.
+
+ `oom_group_kill` is a different axis: it counts the times the kernel took the whole cgroup down together instead of picking one victim, which it only does when `memory.oom.group` is set to 1. Kubernetes sets that by default, which is how one greedy process may end up resetting an entire job - see [Overcoming job reset on CPU OOM event](https://github.com/stas00/ml-engineering/blob/master/orchestration/kubernetes/README.md#overcoming-job-reset-on-cpu-oom-event).
+
+ footnote: these are cgroup v2 names; v1 spelled the same things differently (`memory.limit_in_bytes`, `memory.failcnt`), but you are unlikely to meet it on modern machines - if `/sys/fs/cgroup/cgroup.controllers` exists, you're on v2.
 
 To watch both halves of one event, force a kill. If your system runs `systemd`, start a shell capped at 50MiB and ask for 300MiB inside it.
 ```bash
@@ -546,19 +556,22 @@ If, however, your system isn't running systemd, which is usually the case when y
 $ sudo mkdir /sys/fs/cgroup/oomtest
 $ echo 50M | sudo tee /sys/fs/cgroup/oomtest/memory.max
 50M
+$ echo 0 | sudo tee /sys/fs/cgroup/oomtest/memory.swap.max
+0
 $ sudo bash -c 'echo $$ > /sys/fs/cgroup/oomtest/cgroup.procs; exec python3 -c "bytearray(300*2**20)"'
+Killed
 $ echo $?
 137
 $ cat /sys/fs/cgroup/oomtest/memory.events
 low 0
 high 0
-max 35
+max 37
 oom 1
 oom_kill 1
 oom_group_kill 0
 $ sudo rmdir /sys/fs/cgroup/oomtest
 ```
-The subshell writes its own PID into `cgroup.procs` and then `exec`s Python, so the limit lands on the process you care about rather than on the shell you typed in, and `dmesg` reports the kill exactly as above with `oom_memcg=/oomtest`. Note that the new cgroup goes at the *root* of the hierarchy: cgroup v2 forbids a cgroup from handing controllers to its children while it still holds processes, so a child of your own cgroup would come out with no `memory.max` to write.
+The subshell writes its own PID into `cgroup.procs` and then `exec`s Python, so the limit lands on the process you care about rather than on the shell you typed in, and `dmesg` reports the kill exactly as above with `oom_memcg=/oomtest`. `memory.swap.max` is the counterpart of `MemorySwapMax=0` in `systemd-run`, and just as load-bearing: omit it on a machine that has swap and the pages are written out instead of the allocation being refused, so `max` climbs into the thousands while `oom_kill` stays at 0 and nothing dies. Note that the new cgroup goes at the *root* of the hierarchy: cgroup v2 forbids a cgroup from handing controllers to its children while it still holds processes, so a child of your own cgroup would come out with no `memory.max` to write.
 
 Finally, an unprivileged container has neither systemd nor a writable `/sys/fs/cgroup`, and there the counters are all you get - which is enough, since they answer the question.
 
