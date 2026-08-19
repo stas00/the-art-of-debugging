@@ -480,6 +480,90 @@ So if you're managing your experiment commands in a file this will allow you to 
 
 It's covered in depth, with worked examples, in the PyTorch chapter - see [strace](../pytorch/README.md#strace). While the examples there use PyTorch, the tool and the techniques apply to any program.
 
+## dmesg
+
+The kernel keeps a ring buffer of its own messages, and `dmesg` prints it. That's where to look when a program disappears without leaving a traceback, or when the hardware or the filesystem is unhappy - the kernel reports these to its own log, not to your program's stderr.
+
+The classic case is a process that vanished with no explanation. If the kernel killed it for using too much memory, it says so:
+```bash
+$ sudo dmesg -T | grep -i "killed process"
+[Mon Aug 10 18:00:40 2026] Memory cgroup out of memory: Killed process 3128934 (ray::_DeepSpeed) total-vm:1079579336kB, anon-rss:504849528kB, file-rss:106628kB, shmem-rss:12288kB, UID:1000 pgtables:1025272kB oom_score_adj:1000
+```
+`anon-rss` is what the process actually had resident when it was killed - about 481GiB here. `Memory cgroup out of memory` says it hit a *cgroup* limit rather than exhausting the machine, which is what a container or a Slurm memory limit looks like from the kernel's side. This entry is what "the job just died" and a bare exit code 137 usually amount to. The PyTorch chapter looks at the same failure from inside the program - see [Debugging CPU memory OOM](../pytorch/README.md#debugging-cpu-memory-oom).
+
+`-T` rewrites the kernel's seconds-since-boot stamps as readable dates. Two more flags worth knowing:
+```bash
+sudo dmesg -l err,crit   # only errors and worse
+sudo dmesg -w            # follow new messages, like tail -f
+```
+
+You will normally need `sudo`, because most systems restrict `dmesg` to privileged users:
+```bash
+$ cat /proc/sys/kernel/dmesg_restrict
+1
+```
+
+There is one ring buffer per kernel, and therefore one per machine, and it is finite - as new messages arrive the oldest are overwritten. So `dmesg` is the recent past only, and for anything older you want the durable copy. On a machine running systemd that's journald's: `journalctl -k` prints the kernel messages it saved, and `-b -1` reaches back into the previous boot, since the journal survives reboots on most distributions. Debian and Ubuntu additionally write `/var/log/kern.log`.
+
+If you're working inside a container, that one-buffer-per-machine rule has two consequences. The kernel is the host's, so what you read is the host's log - messages from other tenants appear in it, and nothing marks which container any of them came from. And the container has no journal of its own, so the durable copy doesn't exist where you are: it's on the node, or in whatever log collector the cluster runs there, and either may be out of your reach.
+
+When the question is specifically "was I killed for memory?", you don't need `dmesg` at all - the cgroup your processes live in keeps its own counters, and reading them needs no privileges:
+```bash
+cat /sys/fs/cgroup$(cut -d: -f3 /proc/self/cgroup)/memory.events
+```
+`/proc/self/cgroup` names your own cgroup, so this reads the counters for wherever you happen to be - your login session on a host, or the container as a whole inside one. The path is doing real work here: the top of the hierarchy has no memory files at all, so `/sys/fs/cgroup/memory.events` on its own exists only in a container that was given a view of just its own cgroup. A non-zero `oom_kill` means the kernel killed something in that cgroup, and `memory.peak` against `memory.max` in the same directory tells you how close you came. These are cgroup v2 names; v1 spelled the same things differently (`memory.limit_in_bytes`, `memory.failcnt`), but you are unlikely to meet it on a current node - if `/sys/fs/cgroup/cgroup.controllers` exists, you're on v2.
+
+To watch both halves of one event, force a kill. If your system runs `systemd`, start a shell capped at 50MiB and ask for 300MiB inside it.
+```bash
+$ systemd-run --user --scope -p MemoryMax=50M -p MemorySwapMax=0 bash
+Running as unit: run-p1092605-i1092606.scope; invocation ID: a021b4b9a54947ba8d5409ea765cb0aa
+$ python3 -c "bytearray(300*2**20)"
+Killed
+$ echo $?
+137
+$ cat /sys/fs/cgroup$(cut -d: -f3 /proc/self/cgroup)/memory.events
+low 0
+high 0
+max 39
+oom 1
+oom_kill 1
+oom_group_kill 0
+$ exit
+```
+`MemorySwapMax=0` is the load-bearing half - without it the process gets swapped out instead of killed. The counters confirm one `oom_kill`, and `max 39` is the number of times an allocation bumped into the limit. Leaving the shell removes the limited memory scope, so there is nothing to clean up.
+
+The kernel's account of the same kill names the cgroup that ran out and the process it chose:
+```bash
+$ sudo dmesg -T | grep -iE "oom-kill|out of memory" | tail -2
+[Wed Aug 19 08:14:58 2026] oom-kill:constraint=CONSTRAINT_MEMCG,nodemask=(null),cpuset=user.slice,mems_allowed=0,oom_memcg=/user.slice/user-1000.slice/user@1000.service/app.slice/run-p1092605-i1092606.scope,task_memcg=/user.slice/user-1000.slice/user@1000.service/app.slice/run-p1092605-i1092606.scope,task=python3,pid=1092733,uid=1000
+[Wed Aug 19 08:14:58 2026] Memory cgroup out of memory: Killed process 1092733 (python3) total-vm:325364kB, anon-rss:47744kB, file-rss:4908kB, shmem-rss:0kB, UID:1000 pgtables:164kB oom_score_adj:0
+```
+`oom_memcg` ends in the same `run-p1092605-i1092606.scope` that `systemd-run` reported on the first line, which is how you tie a kernel message back to something you launched. A capped shell is useful beyond this demo - run a suspect job inside one and the kernel enforces your ceiling instead of the machine's.
+
+
+If, however, your system isn't running systemd, which is usually the case when you run inside a container, but you have `sudo` and a writable `/sys/fs/cgroup`, you can do the same thing directly through the cgroup filesystem:
+```bash
+$ sudo mkdir /sys/fs/cgroup/oomtest
+$ echo 50M | sudo tee /sys/fs/cgroup/oomtest/memory.max
+50M
+$ sudo bash -c 'echo $$ > /sys/fs/cgroup/oomtest/cgroup.procs; exec python3 -c "bytearray(300*2**20)"'
+$ echo $?
+137
+$ cat /sys/fs/cgroup/oomtest/memory.events
+low 0
+high 0
+max 35
+oom 1
+oom_kill 1
+oom_group_kill 0
+$ sudo rmdir /sys/fs/cgroup/oomtest
+```
+The subshell writes its own PID into `cgroup.procs` and then `exec`s Python, so the limit lands on the process you care about rather than on the shell you typed in, and `dmesg` reports the kill exactly as above with `oom_memcg=/oomtest`. Note that the new cgroup goes at the *root* of the hierarchy: cgroup v2 forbids a cgroup from handing controllers to its children while it still holds processes, so a child of your own cgroup would come out with no `memory.max` to write.
+
+Finally, an unprivileged container has neither systemd nor a writable `/sys/fs/cgroup`, and there the counters are all you get - which is enough, since they answer the question.
+
+If you're chasing a GPU fault, the NVIDIA driver logs `Xid` errors here too - see [Xid Errors](https://github.com/stas00/ml-engineering/blob/master/compute/accelerator/nvidia/debug.md#xid-errors) in the companion book for how to read them.
+
 ## nohup
 
 If you need to connect to a remote server launch a command and either logout or let the connection timeout, normally the command will get terminated upon exit.
