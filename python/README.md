@@ -792,8 +792,6 @@ Let `py-spy` launch it:
 ```bash
 $ py-spy record -o profile.svg -- python profile_me.py
 py-spy> Sampling process 100 times a second. Press Control-C to exit.
-
-
 py-spy> Stopped sampling because process exited
 py-spy> Wrote flamegraph data to 'profile.svg'. Samples: 1643 Errors: 0
 ```
