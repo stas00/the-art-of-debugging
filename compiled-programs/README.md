@@ -735,3 +735,45 @@ LD_PRELOAD="/path/to/libfoo.so:/path/to/libbar.so" myprogram
 ```
 
 footnote: run `man ld.so` for more information on `LD_PRELOAD`
+
+### ltrace
+
+`ltrace` is of little use for Python or PyTorch programs - if that's what you're debugging, use [strace](../pytorch/README.md#strace) instead. For a compiled executable, though, it completes the picture the previous two sections started: `nm` tells you which library *defines* a symbol and `LD_DEBUG=libs` tells you which file the loader *picked*, while `ltrace` shows which library function was actually *called* at run time, with which arguments and what return value.
+
+It's rarely installed by default:
+```bash
+sudo apt-get install -y ltrace
+```
+
+Run it on the `dl1` program from earlier in this chapter:
+```bash
+$ cd dl1
+$ LD_LIBRARY_PATH=. ltrace ./dl1
+puts("Inside main()")                            = 14
+util_a(0x7f8c2c676710, 4, 0, 0)                  = 0
+Inside main()
+Inside util_a()
++++ exited (status 0) +++
+```
+The `printf` in `dl1.c` shows up as `puts` because the compiler rewrote a format string that has no format specifiers - you're watching what was actually linked, not what the source says. The four arguments to `util_a` are noise: `ltrace` doesn't know its prototype, so it falls back to dumping the first four argument registers. Declare prototypes in `~/.ltrace.conf` if you want them formatted properly.
+
+Naming a library with `-l` narrows the trace to that library and labels each call with its caller:
+```bash
+$ LD_LIBRARY_PATH=. ltrace -l '*libc.so*' ./dl1
+dl1->puts("Inside main()")                       = 14
+libmyutil.so->puts("Inside util_a()")            = 16
+Inside main()
+Inside util_a()
++++ exited (status 0) +++
+```
+The `caller->function` form is the payoff, because it answers "is my library's function being called, or is a different `libmyutil.so` winning?" - the run-time counterpart to what `nm` and `LD_LIBRARY_PATH` settle statically.
+
+And here is where it stops. `ltrace` works by intercepting calls at the executable's PLT (Procedure Linkage Table) - the small stubs the linker puts in a program for each function that has to be resolved to a shared library - so calls that don't go through those stubs are invisible to it. A Python interpreter has almost none:
+```bash
+$ ltrace python -c pass
+__libc_start_main(0x5c5b10, 3, 0x7ffceb111d18, 0x678f20 <no return ...>
++++ exited (status 0) +++
+```
+Two lines for an entire interpreter start-up. Worse, libraries loaded with `dlopen` are invisible to it even with `-l`, and `dlopen` is how every Python extension module arrives - so on a PyTorch program `ltrace -l '*libcudart*' python prog.py` reports nothing at all, while `libcudart` is loaded and busy the whole time.
+
+footnote: run `man ltrace` for more information on `ltrace`
