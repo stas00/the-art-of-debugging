@@ -110,9 +110,4 @@ When included images are too large, make them smaller a bit:
 mogrify -format png -resize 1024x1024\> *png
 ```
 
-Commit figures as PNG rather than SVG, even when the tool emits SVG. Verified
-2026-08-18 across all three targets: GitHub sanitizes SVG and strips the
-click-to-zoom and text search that are its only advantage, and Prince runs a
-wide vector graph off the page edge and clips its labels. Convert with
-`rsvg-convert -w 1024` and, where the interactive view matters, tell readers to
-generate their own SVG.
+Commit figures as PNG rather than SVG, even when the tool emits SVG. Verified 2026-08-18 across all three targets: GitHub sanitizes SVG and strips the click-to-zoom and text search that are its only advantage, and Prince runs a wide vector graph off the page edge and clips its labels. Convert with `rsvg-convert -w 1024` and, where the interactive view matters, tell readers to generate their own SVG.
