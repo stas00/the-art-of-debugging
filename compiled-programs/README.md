@@ -677,8 +677,7 @@ Binary files /usr/local/cuda-12.9/nvvm/lib64/libnvvm.so.4.0.0 and /usr/local/cud
 
 Therefore it's crucial that the path `/usr/local/cuda-13.0/nvvm/lib64/` is in `LD_LIBRARY_PATH` when you want to load an application that relies on cuda-13.0. If you have `/usr/local/cuda-12.9/nvvm/lib64/` in there instead, it's very possible the application may crash or complain about some symbol is missing.
 
-case study: in other situations a symbol could be missing because the program wasn't linked properly at build time. Here is
-a bug report [undefined symbol curandCreateGenerator for torch extensions](https://github.com/pytorch/pytorch/issues/69666) that demonstrates this exact issue.
+case study: in other situations a symbol could be missing because the program wasn't linked properly at build time. Here is a bug report [undefined symbol curandCreateGenerator for torch extensions](https://github.com/pytorch/pytorch/issues/69666) that demonstrates this exact issue.
 
 ### Finding which library actually loads
 

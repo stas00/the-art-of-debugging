@@ -75,8 +75,7 @@ Even if you have to eventually use real data, still try to use the smallest poss
 
 For example, if you are debugging a Machine Learning project, that needs to train a 175B-parameter model, you can use a 1B- or even a 125M-parameter model, for basic quality testing. And a 10K-parameter model for debugging the functionality and exceptions.
 
-If you are into Machine Learning and want to go into a detailed process please read:
-[Faster debug and development with tiny models, tokenizers and datasets](https://github.com/stas00/ml-engineering/blob/eb81cd46a3b508d7ef6bd3f528134f9b7721918b/debug/make-tiny-models-tokenizers-datasets.md)
+If you are into Machine Learning and want to go into a detailed process please read: [Faster debug and development with tiny models, tokenizers and datasets](https://github.com/stas00/ml-engineering/blob/eb81cd46a3b508d7ef6bd3f528134f9b7721918b/debug/make-tiny-models-tokenizers-datasets.md)
 
 ### Single process, single cpu, single gpu, local desktop/laptop
 
@@ -699,8 +698,7 @@ As you can see this program got killed as soon as it allocated 5GiB of Resident 
 
 You can read [A Deep Investigation into MMAP Not Leaking Memory](https://stasosphere.com/entrepreneur-being/301-mmap-memory-leak-investigation/) to see how I used this technique to figure out whether MMAP leaks memory or not.
 
-For the detailed manpage see [systemd-run](https://www.freedesktop.org/software/systemd/man/systemd-run.html) and
-for additional properties that can be set [this section](https://www.freedesktop.org/software/systemd/man/systemd.resource-control.html).
+For the detailed manpage see [systemd-run](https://www.freedesktop.org/software/systemd/man/systemd-run.html) and for additional properties that can be set [this section](https://www.freedesktop.org/software/systemd/man/systemd.resource-control.html).
 
 
 
