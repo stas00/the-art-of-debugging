@@ -100,6 +100,26 @@ config.vision_config.update(dict(embed_dim=64))
 ```
 See [idefics-make-tiny-model.py](tiny-scripts/idefics-make-tiny-model.py) for a fully working script (I didn't bother adding the vocab shrinking as I'm just demonstrating how to update nested config objects here).
 
+A related trap: architectures that interleave block types spell the pattern out in a `layer_types` list with one entry per layer. [Qwen/Qwen-AgentWorld-35B-A3B](https://huggingface.co/Qwen/Qwen-AgentWorld-35B-A3B/blob/main/config.json#L19) carries 40 `linear_attention`/`full_attention` entries beside its `"num_hidden_layers": 40`, and the two have to be trimmed together - and, as in the nested case above, both keys live under `text_config`.
+
+A mismatch fails in two different ways. Save the shrunken config and load it back, and it refuses outright:
+
+```
+StrictDataclassClassValidationError: Class validation error for validator 'validate_layer_type':
+    ValueError: `num_hidden_layers` (2) must be equal to the number of `layer_types` (40)
+```
+
+Mutate the config object in memory only, and nothing is raised - the model quietly builds your 2 layers from the first 2 entries of the untouched list, and since this model's full attention block first appears at index 3, you get two linear-attention layers and none of the block you meant to keep. So trim the list in lockstep:
+
+```python
+config.text_config.update(dict(
+    num_hidden_layers=4,
+    layer_types=config.text_config.layer_types[:4],
+))
+```
+
+If you're editing `config.json` directly, you can instead delete the `layer_types` entry and let the config regenerate the pattern from `full_attention_interval` at the new depth. Either way, pick a depth that spans one full period of the pattern - 4 rather than 2 for this model - or the variation you were keeping disappears.
+
 We can then further halve our tiny model size by converting the model to fp16 or bf16 (depending on the goal) before saving it:
 
 ```
@@ -409,7 +429,7 @@ Therefore in this section we will discuss how to reduce the model's number of hi
 
 This model may have 2 alternating types of Transformer blocks, so we need to keep at least 2 layers. (`Qwen/Qwen3-Next-80B-A3B-Instruct` uses a full attention block only once every 4 layers so there you'd need at least 4 layers.)
 
-The config entry that we want to change is [`num_hidden_layers`](https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507/blob/e67ac5d/config.json#L24)
+The config entry that we want to change is [`num_hidden_layers`](https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507/blob/e67ac5d/config.json#L24). Some architectures pair it with a companion entry that has to be trimmed in lockstep - a decoder-side layer count, or a `layer_types` list - see [Making a tiny model](#making-a-tiny-model).
 
 Let's first run a quick test to demonstrate that even just the model loading time can be much faster, before seeing the huge speedup in the compute time:
 
@@ -2314,7 +2334,7 @@ Note: [NCCL==2.14.3 coming with `pytorch==1.13` hangs](https://github.com/NVIDIA
 `CUDA_VISIBLE_DEVICES=""` and `CUDA_LAUNCH_BLOCKING=1` from the previous section give you an in-context Python traceback that points at *which* operator failed - but they can't see *inside* a CUDA kernel. When the bug is a bad memory access, a race, or use of uninitialized device memory, NVIDIA's `compute-sanitizer` (ships with the CUDA toolkit; it replaced the old `cuda-memcheck`) instruments the kernel and reports the offending access.
 
 It has four sub-tools, selected with `--tool`:
-- `memcheck` (the default) - out-of-bounds and misaligned device memory accesses, and leaks.
+- `memcheck` (the default) - out-of-bounds and misaligned device memory accesses, and, with `--leak-check full`, device memory that was never freed.
 - `racecheck` - shared-memory data races between threads of a block.
 - `initcheck` - reads of uninitialized device global memory.
 - `synccheck` - invalid `__syncthreads()` / barrier use.
@@ -2326,6 +2346,8 @@ compute-sanitizer --tool memcheck python my-program.py
 ```
 
 Every kernel is instrumented, so expect a large slowdown; narrow to a single reproducing step and use `--launch-count`/`--launch-skip` to check only the suspect launches.
+
+Leak reporting is off unless you ask for it, and its absence is indistinguishable from a clean run - without `--leak-check full` a program that allocates a megabyte and never frees it still finishes with `ERROR SUMMARY: 0 errors`. Turning it on comes with a caveat on PyTorch: the caching allocator is still holding its segments when the process exits, and each one is reported as a leak. A correct script that allocates a single small tensor reports `LEAK SUMMARY: 2097156 bytes leaked in 2 allocations` - a 2MiB allocator segment plus a 4-byte block. Dropping your references and calling `torch.cuda.empty_cache()` before exit releases the segment and leaves only the 4 bytes, which is a quick way to tell your own leak from the allocator's bookkeeping.
 
 First, when you *don't* need it: modern PyTorch's own indexing / gather / scatter / take kernels bounds-check on the device and `assert`, so a stray index aborts with a clear message, e.g.
 
@@ -2448,7 +2470,56 @@ Same report, now with the source line:
 
 The only difference from the prebuilt run is `in kernel_oob.cu:7` - the exact store. Use `-lineinfo` (keeps optimizations) or `-G` for a full debug build (disables optimizations, much slower). Triton kernels work too and emit line info by default.
 
+#### Shared-memory races with `racecheck`
+
+memcheck asks whether a kernel touched memory it shouldn't. `racecheck` asks whether two threads of a block touched the same `__shared__` location with nothing ordering them - the bug behind a kernel that returns slightly different numbers on every run instead of crashing. It sees shared memory only, so it is a tool for hand-written kernels; a program that just calls PyTorch ops has no shared memory of its own to check.
+
+[kernel_race.cu](code/kernel_race.cu) makes the classic mistake - each thread publishes a value and reads its neighbour's with no `__syncthreads()` in between (built with `-lineinfo` by [kernel_race.py](code/kernel_race.py), so the report can name lines):
+
+```cpp
+__global__ void race(int *out)
+{
+    __shared__ int s[64];
+    int i = threadIdx.x;
+    s[i] = i;                    // written by thread i ...
+    out[i] = s[(i + 1) % 64];    // ... read by thread i-1, no barrier between
+}
+```
+
+```bash
+compute-sanitizer --tool racecheck python kernel_race.py
+```
+
+```
+========= Error: Race reported between Write access at race(int *)+0xc0 in kernel_race.cu:8
+=========     and Read access at race(int *)+0xf0 in kernel_race.cu:9 [256 hazards]
+========= RACECHECK SUMMARY: 1 hazard displayed (1 error, 0 warnings)
+```
+
+That is the default `analysis` mode - one record per racing pair, with the hazard count behind it. `--racecheck-report hazard` prints those 256 hazards individually instead, each naming the two threads, the shared address and the value seen, plus a host backtrace - so pair it with `--print-limit` to cap the output and `--print-level error` to keep only the hazards crossing a warp boundary (8 of the 256 here); the rest are warnings tagged `(Warp Level Programming)`, since warp-synchronous code sometimes relies on them deliberately. To re-read findings without re-running an instrumented program, `--save race.log` records them and `--read race.log` prints them back; the file name takes `%p` for the pid, so `torchrun` ranks don't overwrite each other.
+
 Primary reference: [NVIDIA Compute Sanitizer](https://docs.nvidia.com/compute-sanitizer/).
+
+
+### Stepping inside a kernel with `cuda-gdb`
+
+`compute-sanitizer` tells you that a kernel did something wrong and where. `cuda-gdb`, from the same toolkit, lets you stop inside it and look around - it is `gdb` with device support: breakpoints in `__global__` functions, per-thread inspection, and reads of device memory.
+
+Build the kernel with `-G` instead of `-lineinfo` - full device debug info with optimizations off ([kernel_oob_gdb.py](code/kernel_oob_gdb.py)) - and put your normal command after `--args`. The wait on the first run is the compile rather than the debugger: this example took 102s the first time and 17s on later runs, once the built extension was cached. One PyTorch-specific wrinkle: `cpp_extension.load` compiles the kernel while the program is already running, so the symbol doesn't exist when the debugger starts and the breakpoint has to be allowed to stay pending:
+
+```bash
+$ cuda-gdb -ex 'set breakpoint pending on' -ex 'break write_oob' -ex run --args python kernel_oob_gdb.py
+Function "write_oob" not defined.
+Breakpoint 1 (write_oob) pending.
+[Switching focus to CUDA kernel 0, grid 1, block (0,0,0), thread (0,0,0), device 0, sm 124, warp 0, lane 0]
+
+CUDA thread hit Breakpoint 1.1, write_oob<<<(1,1,1),(8,1,1)>>> (p=0x7ffc6fe00000) at kernel_oob.cu:6
+6	    int i = threadIdx.x;
+```
+
+From there the usual `gdb` vocabulary works, with device additions: `print p[0]` reads device memory, `info args` shows the kernel's arguments, and `cuda thread (4,0,0)` moves the focus to a specific thread - which is what you want in this kernel, where threads 0-3 are fine and only 4-7 run off the end.
+
+Reference: [NVIDIA cuda-gdb](https://docs.nvidia.com/cuda/cuda-gdb/).
 
 
 ### segfaults and getting a backtrace from a core file

@@ -164,6 +164,7 @@ Use the newest `build/update-suggestions-*.md` file in the current repository un
 4. Exactly two things may outlive an applied item. A decision that must not be re-litigated becomes one line under the file's `Rejected (do not propose again)` section. A lesson that would change how future work is done becomes a rule in this file. Whatever fits neither dies with the item.
 4. Deleting leaves a numbering gap, and the gap is correct - see [Suggestions report](#suggestions-report). Never renumber to close it.
 5. Recurring failure: an entry that proves a decision nobody is disputing, or explains something the reader can already see in the book. Both mean the item should have been deleted outright.
+6. The raw fodder goes in the same change as the content it produced. Once a suggestion has landed in the book, delete the block it came from in `incoming.md` - do not ask whether to, and do not leave it for a follow-up pass. Applying the edit *is* the decision; a suggestion that has shipped is no longer incoming, and leaving it there means the next triage re-researches prose that is already written. Verify each line of the block is genuinely consumed before deleting, since fodder blocks mix applied, already-in-the-book and still-open material, and carry any surviving decision into `Rejected (do not propose again)` first.
 
 ## Review scope
 
