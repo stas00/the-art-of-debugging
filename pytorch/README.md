@@ -76,6 +76,8 @@ config.update(dict(
 ))
 ```
 
+Note that this encoder-decoder model takes both layer counts. `num_decoder_layers` falls back to `num_layers` only when it isn't set, and a config loaded from a real checkpoint already has it set, so trimming `num_layers` alone would leave the decoder at its full depth. Other encoder-decoder architectures split it differently - BART, Marian, Pegasus and Whisper name the pair `encoder_layers` and `decoder_layers` - but the rule is the same: shrink both.
+
 The original ["google/mt5-small"](https://huggingface.co/google/mt5-small/tree/main) model file was 1.2GB. With the above changes (and vocab shrinking as explained in the following sections) we got it down to 126MB.
 
 If you're dealing with a multi-level nested config, you will have to update each sub-level's config object separately. For example in [IDEFICS](https://huggingface.co/HuggingFaceM4/idefics-9b/blob/main/config.json) we have 1 main and 2 nested objects:
