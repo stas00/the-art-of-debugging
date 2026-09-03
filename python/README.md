@@ -946,7 +946,7 @@ and open the SVG in a browser:
 
 ![py-spy flame graph](images/py-spy-flamegraph.png)
 
-Every frame is labelled `function (file:line)` with the line that was executing, and that is what ties the picture back to the listing above: `<module> (profile_me.py:12)` is the `step()` call in the loop, `step (profile_me.py:9)` is its `return embed(tokenize(20000))`, and both `embed` and its `<genexpr>` sit at line 6 - the `sum()` and the generator expression inside it. One consequence worth knowing: a function that calls out from several different lines shows up as one box per call site, not as a single merged box.
+Every frame is labeled `function (file:line)` with the line that was executing, and that is what ties the picture back to the listing above: `<module> (profile_me.py:12)` is the `step()` call in the loop, `step (profile_me.py:9)` is its `return embed(tokenize(20000))`, and both `embed` and its `<genexpr>` sit at line 6 - the `sum()` and the generator expression inside it. One consequence worth knowing: a function that calls out from several different lines shows up as one box per call site, not as a single merged box.
 
 Boxes stacked on top of a box are the functions it called. A box's width is the share of samples it appeared in, so the widest boxes are where the time went - here `embed` takes roughly 60% of the samples against `tokenize`'s 40%. The horizontal axis is *not* time: identical stacks are merged and sorted by name, so width means "in many samples", not "in one long stretch". The narrow column at the right edge is the interpreter's own start-up, which got sampled too because `py-spy` launched the program. Click any box in the SVG to zoom into that part of the tree.
 

@@ -970,7 +970,7 @@ To get a feeling for what it looks like, here is an example of a memory profile 
 
 ![memory leak](images/torch-mem-profile-mem-leak.png)
 
-You can see those brown- and red-coloured continuous horizontal bars (I pointed to those with black arrows). On the very left edge of those bars are the moments that created 2 large tensors during a single layer's `forward`, but you can see those 2 unlike other colored bars continue all the way into the right edge. The exact same story happen in the next spike, which is just the subsequent layer's memory allocations when it runs its `forward` - and you can see the yellow and orange bars that demonstrate the same leak, because it doesn't get cleared. So each layer's `forward` here leaks a few MBs of memory, which quickly adds up. A very small model has been used here, so that the absolute leak size was small, but once switched to a real model those MBs become GBs and we quickly run out of memory.
+You can see those brown- and red-colored continuous horizontal bars (I pointed to those with black arrows). On the very left edge of those bars are the moments that created 2 large tensors during a single layer's `forward`, but you can see those 2 unlike other colored bars continue all the way into the right edge. The exact same story happen in the next spike, which is just the subsequent layer's memory allocations when it runs its `forward` - and you can see the yellow and orange bars that demonstrate the same leak, because it doesn't get cleared. So each layer's `forward` here leaks a few MBs of memory, which quickly adds up. A very small model has been used here, so that the absolute leak size was small, but once switched to a real model those MBs become GBs and we quickly run out of memory.
 
 You can click on all those bars and the profiler will show you the traceback to the code that created the corresponding memory allocation. Since under the hood, PyTorch runs C++ CUDA code, unless you understand what happens there, it won't help you to understand the location of the leak in the code. But if you trace back up the trace into the Python land, you will actually see references to functions that you'd be familiar with. For example, calls like `torch.zeros()`.
 
@@ -2136,7 +2136,7 @@ def forward(self, hidden_states):
         return self._forward(hidden_states)
 ```
 
-Since the automatic detector only reports on inputs and outputs of full frames, once you know where to look, you may want to analyse the intermediary stages of any specific `forward` function as well. In such a case you can use the `detect_overflow` helper function to inject the detector where you want it, for example:
+Since the automatic detector only reports on inputs and outputs of full frames, once you know where to look, you may want to analyze the intermediary stages of any specific `forward` function as well. In such a case you can use the `detect_overflow` helper function to inject the detector where you want it, for example:
 
 ```python
 from underflow_overflow import detect_overflow
@@ -2476,7 +2476,7 @@ The only difference from the prebuilt run is `in kernel_oob.cu:7` - the exact st
 
 memcheck asks whether a kernel touched memory it shouldn't. `racecheck` asks whether two threads of a block touched the same `__shared__` location with nothing ordering them - the bug behind a kernel that returns slightly different numbers on every run instead of crashing. It sees shared memory only, so it is a tool for hand-written kernels; a program that just calls PyTorch ops has no shared memory of its own to check.
 
-[kernel_race.cu](code/kernel_race.cu) makes the classic mistake - each thread publishes a value and reads its neighbour's with no `__syncthreads()` in between (built with `-lineinfo` by [kernel_race.py](code/kernel_race.py), so the report can name lines):
+[kernel_race.cu](code/kernel_race.cu) makes the classic mistake - each thread publishes a value and reads its neighbor's with no `__syncthreads()` in between (built with `-lineinfo` by [kernel_race.py](code/kernel_race.py), so the report can name lines):
 
 ```cpp
 __global__ void race(int *out)
@@ -2532,7 +2532,7 @@ The corefile is what the program generates when it crashes on a low-level - e.g.
 
 When a segfault event happens Python can't do anything, as the proverbial carpet is pulled out from under its feet, so it can't generate an exception or even write anything to the output.
 
-In these situation one must go and analyse the libC-level calls that lead to the segfault, which is luckily saved in the core file.
+In these situation one must go and analyze the libC-level calls that lead to the segfault, which is luckily saved in the core file.
 
 The general mechanics - enabling core dumps (`ulimit -c unlimited` and `kernel.core_pattern`), loading a core file into `gdb`, and the `bt` / `bt full` / `thread apply all bt` commands - are covered in [Segmentation fault, core files and gdb](../compiled-programs/README.md#segmentation-fault-core-files-and-gdb). Here we focus on the PyTorch-specific nuances.
 
@@ -2879,7 +2879,7 @@ pgrep -P $(pgrep -o accelerate) | xargs -I {} py-spy dump --pid {}
 
 you get the idea.
 
-This particular approach will only analyse the main processes and not various other sub-processes/threads spawned by these processes. So if you have 8 gpus and 8 processes, the above will generate 8 stack traces.
+This particular approach will only analyze the main processes and not various other sub-processes/threads spawned by these processes. So if you have 8 gpus and 8 processes, the above will generate 8 stack traces.
 
 Then you can pipe the output into this additional useful filter:
 ```bash
@@ -3050,6 +3050,10 @@ Notes:
 
 When a multi-GPU run hangs, `py-spy` shows *where* each rank's Python is parked - but that's usually every rank blocked inside the same NCCL wait, which doesn't reveal what went wrong. The useful questions are *which* collective failed to match across ranks and *where in your code* it was issued. PyTorch's ProcessGroupNCCL watchdog answers both, in two escalating steps: a *desync report* that names the rank and collective that fell out of step, and a *flight recorder* that dumps the full per-rank history of recent collectives, each with the Python call stack that issued it. Start with the first; reach for the second only when you need more.
 
+This section is about the `nccl` backend's watchdog, which is what produces both reports. Measured on PyTorch 2.14.0: if the process group uses the `nccl2` implementation instead - selected with `backend="nccl2"`, or with `TORCH_DIST_USE_NCCL2=1` which redirects plain `"nccl"` to it - none of the `TORCH_NCCL_*` and `TORCH_FR_*` variables below do anything. The same hang then reports a single `Operation timed out` line and a Python traceback pointing at the collective the rank was blocked in rather than the one that diverged, with no desync report and no dump file. Reproduce the hang under `nccl` to diagnose it.
+
+footnote: the 2.14 release notes describe a flight recorder that records through process-group hooks rather than only under NCCL. That is not what a stock 2.14.0 wheel does for `nccl2`, which is why the advice above is to switch back rather than to expect a dump.
+
 ##### The desync report
 
 For most hangs the desync report is enough. Enable it before launching the program with:
@@ -3065,7 +3069,7 @@ torchrun --standalone --nproc_per_node=2 collective_mismatch.py
 ```
 after setting the environment variables above.
 
-The repro deliberately passes a short `timeout=timedelta(seconds=8)` to `init_process_group`, which is why the watchdog fires after 8s. If `default_pg_nccl_timeout` is not overridden the default for NCCL is 10 minutes, so the watchdog won't fire until then. When you're actively chasing a hang, lower it to seconds or a few minutes so the report lands promptly but remember to then undo it before going into production.
+The repro deliberately passes a short `timeout=timedelta(seconds=8)` to `init_process_group`, which is why the watchdog fires after 8s. If `default_pg_nccl_timeout` is not overridden the default for NCCL is 10 minutes, so the watchdog won't fire until then. When you're actively chasing a hang, lower it to seconds or a few minutes so the report lands promptly but remember to then undo it before going into production. Starting from PyTorch 2.14 you don't have to edit the `init_process_group` call to change it: `dist.set_timeout(timedelta(seconds=8))` applies to the group afterwards, and the same call stretches it back out around something slow like a checkpoint load.
 
 On timeout the watchdog names the culprit and prints the call stack of the stuck collective:
 ```
@@ -3301,7 +3305,7 @@ This is a very fresh work-in-progress package, so it's evolving as we are trying
 
 ##### Working with generated trace files
 
-When the per-node-rank trace files has been generated the following might be helpful to quickly analyse the situation:
+When the per-node-rank trace files has been generated the following might be helpful to quickly analyze the situation:
 
 
 - grep for a specific match and also print the file and line number where it was found:
