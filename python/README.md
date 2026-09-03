@@ -435,7 +435,9 @@ The `embed()` and `pdb` approaches above look like a choice between stepping and
 
 ### IDE debuggers
 
-The sections above are terminal-driven - you type commands at a prompt. The other major family is the graphical debugger built into an IDE, where the breakpoints, the call stack, the source and the variable inspector are all on the screen at once. [PyCharm](https://www.jetbrains.com/pycharm/) and [VSCode](https://code.visualstudio.com/) both ship excellent Python debuggers. Where they pull ahead of a prompt is on state that doesn't fit on a line - which, in this line of work, means tensors.
+The sections above are terminal-driven - you type commands at a prompt. The other major family is the graphical debugger built into an IDE, where the breakpoints, the call stack, the source and the variable inspector are all on the screen at once. When to reach for this instead of prints or a prompt is [Choosing the right approach](#choosing-the-right-approach). [PyCharm](https://www.jetbrains.com/pycharm/) and [VSCode](https://code.visualstudio.com/) both ship excellent Python debuggers. Where they pull ahead of a prompt is on state that doesn't fit on a line - which, in this line of work, means tensors.
+
+footnote: [Cursor](https://cursor.com/download) is a fork of VSCode, so everything that applies to VSCode in this section applies to Cursor alike.
 
 Two tensors, a couple of ops and a backward pass are enough to show it:
 
