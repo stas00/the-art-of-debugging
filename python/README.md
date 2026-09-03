@@ -5,7 +5,7 @@
 The techniques in this chapter fall into a few families, and picking the right one first saves a lot of time:
 
 - **Print-based** ([q](#q), [printing object variables](#printing-object-variables), [auto-print](#auto-print-whats-being-observed), [who is calling?](#who-is-calling)) - inject output into the code and re-run. Cheap, needs no tooling, and it keeps working when the program is spread over many processes. Often it's the only practical option inside a tight loop or a hot path, where stopping at a breakpoint on every iteration would take forever. The cost is a re-run for each new question.
-- **Interactive** ([pdb attach](#attaching-pdb-to-a-running-process), [IPython `embed()`](#dropping-into-ipython-with-embed), [IDE debuggers](#ide-debuggers)) - stop the program and ask it anything, without re-running. Best when the state is complex or you don't yet know what to print, since one stop answers many questions. The cost is that it halts the process, which gets awkward in multi-process runs.
+- **Interactive** ([pdb attach](#attaching-pdb-to-a-running-process), [IPython `embed()`](#dropping-into-ipython-with-embed), [ipdb](#ipdb), [IDE debuggers](#ide-debuggers), [remote debugging](#remote-debugging)) - stop the program and ask it anything, without re-running. Best when the state is complex or you don't yet know what to print, since one stop answers many questions. The cost is that it halts the process, which gets awkward in multi-process runs.
 - **Observing from the outside** ([py-spy](#py-spy)) - read the stack of a process that is already running, without stopping or modifying it. This is the one to reach for when a program is already hung and you can't afford to restart it.
 - **Profilers** ([cProfile](#cprofile), [line_profiler](#line_profiler)) - for when nothing is broken except the speed, and the question is where the time actually goes.
 
@@ -435,9 +435,154 @@ The `embed()` and `pdb` approaches above look like a choice between stepping and
 
 ### IDE debuggers
 
-XXX: this section is just starting out
+The sections above are terminal-driven - you type commands at a prompt. The other major family is the graphical debugger built into an IDE, where the breakpoints, the call stack, the source and the variable inspector are all on the screen at once. [PyCharm](https://www.jetbrains.com/pycharm/) and [VSCode](https://code.visualstudio.com/) both ship excellent Python debuggers. Where they pull ahead of a prompt is on state that doesn't fit on a line - which, in this line of work, means tensors.
 
-The sections above are terminal-driven - you type commands at a prompt. The other major family is the graphical debugger built into an IDE, where the breakpoints, the call stack, the source and the variable inspector are all on the screen at once. [PyCharm](https://www.jetbrains.com/pycharm/) and [VSCode](https://code.visualstudio.com/) both ship excellent Python debuggers, and they are particularly good at browsing large data structures - see [the note on inspecting tensors](../pytorch/README.md#debugging-tensors) in the PyTorch chapter.
+Two tensors, a couple of ops and a backward pass are enough to show it:
+
+```python
+# grad_demo.py
+import torch
+
+a = torch.tensor([[1., 2., 3.], [4., 5., 6.]], requires_grad=True)
+b = torch.tensor([[2., 2., 2.], [3., 3., 3.]], requires_grad=True)
+
+c = a * b
+s = c.sum(dim=1)
+loss = (s * s).sum()
+loss.backward()
+print(loss)
+```
+
+([grad_demo.py](grad_demo.py) is the same file.) Stop on the `backward()` line under `pdb` and ask what the gradients are:
+
+```
+$ python -m pdb grad_demo.py
+(Pdb) b 9
+Breakpoint 1 at grad_demo.py:9
+(Pdb) c
+> grad_demo.py(9)<module>()
+-> loss.backward()
+(Pdb) p a.grad
+None
+(Pdb) n
+> grad_demo.py(10)<module>()
+-> print(loss)
+(Pdb) p a.grad
+tensor([[ 48.,  48.,  48.],
+        [270., 270., 270.]])
+(Pdb) p a.grad.shape
+torch.Size([2, 3])
+```
+
+Nothing is wrong with that, but notice the cost in time and effort. Every fact is a separate typed command, and the first `a.grad` came back `None` - gradients don't exist until `backward()` has run. That `None` is one of the most common tensor-debugging confusions there is, and at a prompt you only meet it by asking. If you fix something and have to repeat the process you again have to type the commands. The debugger shell history might help a bit, but it's still too slow.
+
+In an IDE you set the breakpoints once, you open the preview of the variables once and then re-run the program as many times as needed and almost instantly jump to the point of interest and immediately see the data. Moreover, you can easily traverse complex variables like tensor objects with a click, e.g. `a.grad.data`. And you can add watch expressions, e.g. `a.grad.abs().max()`, which will get re-evaluated at every stop. And you can make breakpoints conditional. `pdb` can do both (`condition`, and re-typing the expression), but the IDE keeps them visible instead of remembered.
+
+Let's load our demo in VSCode (or Cursor) and PyCharm and set the breakpoints, at `backward` and after it.
+
+![VSCode](images/vscode-demo-py.png)
+
+![PyCharm](images/pycharm-demo-py.png)
+
+There are breakpoints at the last 2 lines of code, the snapshots show the control stopped at the last one, which allows us to dive into the gradient values. PyCharm also shows the values of variables to the right of the code itself.
+
+Now we can look into the contents of the objects, in the case of PyTorch tensors we often want to see the values of the tensors and their `.grad` values:
+
+![VSCode variable pane, a.grad after backward](images/vscode-data-view.png)
+
+![PyCharm variable pane, a expanded](images/pycharm-data-view.png)
+
+Both show `device`, `dtype`, `requires_grad`, `shape`, and `grad` as `tensor([[ 48., 48., 48.], [270., 270., 270.]])` - the same numbers `pdb` printed, without typing `p a.grad`. `b.grad` is sitting one row away with its own values. The rows around `grad` are the ones that usually explain a `None` you didn't expect: a non-leaf tensor doesn't accumulate `.grad` unless you ask it to, and a `grad_fn` of `None` on something you thought was differentiable means it never entered the graph. See [Debugging Tensors](../pytorch/README.md#debugging-tensors) for what to do with those answers.
+
+The gap widens with size, because at a prompt the terminal decides what you may see:
+
+```
+(Pdb) p torch.randn(64, 64)
+tensor([[-1.7347, -0.3044,  0.3927,  ..., -0.5634, -0.4834,  1.3825],
+        [ 0.6189,  0.8040,  0.1232,  ...,  1.3994, -2.9109,  0.9911],
+        [-1.3580, -0.3039,  0.9366,  ...,  0.5377, -1.6065, -0.1510],
+        ...,
+        [ 0.9606, -0.4030,  0.5352,  ..., -1.5329, -0.3750,  0.1820],
+        [ 0.5672, -0.4638, -1.5155,  ..., -0.4374, -0.1584, -1.0544],
+        [ 1.6033,  0.8179,  0.1554,  ..., -0.3422,  0.3121, -1.5046]])
+```
+
+That is 36 of 4096 values, truncated in both directions, and you cannot scroll into the rest - reaching the corner you suspect means typing another expression, `p t[30:34, 10:14]`, and then another. The inspector hands you the same tensor as something you expand and scroll, so looking around costs mouse movement rather than a fresh guess each time.
+
+case study: In 2020 I ported my first model architecture to HF Transformers and I was using 2 PyCharm instances to step through the original model code in fairseq and the new model code in Transformers - I was matching the tensor values on each step and thus was able to execute a perfect porting. If you're curious I described the step-by-step process at [Porting fairseq wmt19 translation system to transformers](https://huggingface.co/blog/porting-fsmt).
+
+I will let you read the docs on the specific IDE you work with to figure out how to set up the interpreter, launch the debug run and stepping, as those vary from application to application and which also depend on the OS. The purpose of these sections was to show you the power of debugging in an IDE.
+
+
+### Remote debugging
+
+Debugging on a remote node sounds like it needs special handling, and most of the time it doesn't: VSCode's Remote-SSH runs the editor's backend on the node itself, so everything above stays true - same breakpoints, same variable pane, nothing forwarded. Reach for the rest of this section only when you can't run a backend there, or when the process you care about was started by something other than you, such as `torchrun`.
+
+The fallback is to have the program open a debug port and attach the IDE to it. `pip install debugpy`, then wrap the command:
+
+```bash
+python -m debugpy --listen 127.0.0.1:5678 --wait-for-client my-program.py
+```
+
+`--wait-for-client` is the part that makes this usable on a job that takes a while to reach the interesting point: the program stops before its first line and waits, so you cannot miss an early breakpoint while the IDE is still connecting. Until you attach, the only output is `debugpy`'s own notice, which is worth reading once:
+
+```
+0.00s - Debugger warning: It seems that frozen modules are being used, which may
+0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off
+0.00s - to python to disable frozen modules.
+0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.
+```
+
+Pass `-Xfrozen_modules=off` if breakpoints refuse to bind, or `PYDEVD_DISABLE_FILE_VALIDATION=1` to silence the notice once you've decided you don't care. When you can't wrap the command, do the same from inside the code:
+
+```python
+import debugpy
+debugpy.listen(("127.0.0.1", 5678))
+debugpy.wait_for_client()
+```
+
+Note the `127.0.0.1`: a debug port accepts commands that run code as you, so on a shared cluster node binding `0.0.0.0` hands that to anyone who can reach the host. Keep it on the loopback interface and bring it to your laptop over ssh instead:
+
+```bash
+ssh -N -L 5678:localhost:5678 the-node
+```
+
+Then attach from a `launch.json` entry pointing at the forwarded port:
+
+```json
+{
+  "name": "attach to remote node",
+  "type": "debugpy",
+  "request": "attach",
+  "connect": { "host": "localhost", "port": 5678 },
+  "pathMappings": [
+    { "localRoot": "${workspaceFolder}", "remoteRoot": "/path/to/repo/on/the/node" }
+  ]
+}
+```
+
+`pathMappings` is the entry to get right. The debugger reports file paths as the *node* sees them, and if your local checkout sits elsewhere the IDE can't match them to the files you set breakpoints in - the symptom is a session that attaches happily and then never stops anywhere.
+
+PyCharm runs the same idea backwards: you start a *Python Debug Server* run configuration, which makes the IDE the listener, and the program dials out with `pydevd_pycharm.settrace(host, port, suspendPolicy="ALL")` from a `pydevd-pycharm` package whose version has to match your IDE build. Knowing which side listens is most of the battle when switching between the two IDEs.
+
+Under `torchrun`, don't attach to every rank. Have one listen, and let the others stop themselves at the next collective:
+
+```python
+if int(os.environ["RANK"]) == 0:
+    debugpy.listen(("127.0.0.1", 5678))
+    debugpy.wait_for_client()
+```
+
+Rank 0 waits for you while every other rank blocks at the first collective that needs it, which freezes the job in a consistent state at no coordination cost to you:
+
+```
+rank 0 waiting for a debugger client
+[ ... attach from the IDE here ... ]
+rank 1 past the barrier
+rank 0 past the barrier
+```
+
+If several ranks need listeners, derive the port from the rank (`5678 + rank`) and forward each one you want. For a terminal stop instead, which is often quicker than wiring up an IDE, see [Invoke pdb on a specific rank in multi-node training](../pytorch/README.md#invoke-pdb-on-a-specific-rank-in-multi-node-training) and [Attaching pdb to an already-running process](../pytorch/README.md#attaching-pdb-to-an-already-running-process).
 
 ## Profilers
 
