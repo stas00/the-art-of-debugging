@@ -1,5 +1,9 @@
 # The Art of Debugging Open Book
 
+<!-- not-in-ebook-start -->
+<a href="#ebook-versions-of-the-book"><img src="images/The-Art-of-Debugging-book-cover-200x259.png" align="right" width="200" height="259" alt="The Art of Debugging Open Book cover"></a>
+<!-- not-in-ebook-end -->
+
 This evolving book will teach you how to:
 1. **Debug normal issues really fast**
 2. **Make complicated issues possible to debug**
@@ -50,7 +54,7 @@ I will try to rebuild these once in a few weeks or so, but if you want the lates
 
 I maintain a [SKILL.md](./SKILL.md) file that you can use to teach your AI agent to debug your projects better.
 
-See also the companion skills: [Machine Learning Engineering](https://github.com/stas00/ml-engineering/blob/master/SKILL.md) and [Stas' Python Cookbook](https://github.com/stas00/python-cookbook/blob/master/SKILL.md).
+See also the companion skills: [Machine Learning Engineering](https://github.com/stas00/ml-engineering/blob/master/skills/ml-engineering/SKILL.md) and [Stas' Python Cookbook](https://github.com/stas00/python-cookbook/blob/master/SKILL.md).
 
 
 ## Related Open Books
