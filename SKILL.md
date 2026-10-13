@@ -16,7 +16,7 @@ description: >-
 
 > Distilled from **The Art of Debugging Open Book** by Stas Bekman - source: https://github.com/stas00/the-art-of-debugging (CC BY-SA 4.0). This skill is a condensed index; each section links back to the full chapter for depth.
 
-Actionable methodology + copy-paste recipes for debugging Unix / Python / PyTorch programs. Apply the general loop first; then jump to the domain cheatsheet for the failure at hand. For scaling this up to large-model training/inference on real clusters (compute/storage/network, SLURM, throughput/memory, instabilities, fault tolerance, inference), pair this with [Machine Learning Engineering](https://github.com/stas00/ml-engineering/blob/master/SKILL.md).
+Actionable methodology + copy-paste recipes for debugging Unix / Python / PyTorch programs. Apply the general loop first; then jump to the domain cheatsheet for the failure at hand. For scaling this up to large-model training/inference on real clusters (compute/storage/network, SLURM, throughput/memory, instabilities, fault tolerance, inference), pair this with [Machine Learning Engineering](https://github.com/stas00/ml-engineering/blob/master/skills/ml-engineering/SKILL.md).
 
 ## The debugging loop
 
@@ -203,7 +203,7 @@ See [segfaults and getting a backtrace from a core file](https://github.com/stas
 3. **Make distributed output legible:** prefix every log line with `node:rank`, and target `pdb` at one rank. See [prefixing logs](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#prefixing-logs-with-noderank-interleaved-asserts), [pdb on a specific rank](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#invoke-pdb-on-a-specific-rank-in-multi-node-training).
 4. **Narrow further:** check for a [network-level hang](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#network-level-hanging), [isolate a bad GPU](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#isolate-problematic-gpus), or trace line-by-line with the [python `trace`](https://github.com/stas00/the-art-of-debugging/tree/master/pytorch#python-trace) module. On AMD, a slow/hung run may be [IOMMU-related](https://github.com/stas00/ml-engineering/blob/master/compute/accelerator/amd/debug.md#hangs-or-slow-multi-gpu-runs-and-iommu).
 
-For the cluster-level context around these bugs (verifying node connectivity, NCCL/InfiniBand tuning, network benchmarking, checkpointing/fault tolerance), see [Machine Learning Engineering](https://github.com/stas00/ml-engineering/blob/master/SKILL.md).
+For the cluster-level context around these bugs (verifying node connectivity, NCCL/InfiniBand tuning, network benchmarking, checkpointing/fault tolerance), see [Machine Learning Engineering](https://github.com/stas00/ml-engineering/blob/master/skills/ml-engineering/SKILL.md).
 
 ### Performance
 
@@ -244,4 +244,4 @@ For the cluster-level context around these bugs (verifying node connectivity, NC
 - **Confirm you're running the code you edited** (`pkg.__file__`, the `die` trick) before deeper investigation - a huge share of "impossible" bugs are wrong-file/wrong-env.
 - **Read the linked chapter section** before applying an unfamiliar recipe - each has worked examples, caveats, and copy-paste scripts.
 - Prefer built-in, low-overhead tools (`py-spy`, `strace`, `gdb`, env vars) that need no source changes and work on already-running processes.
-- For large-scale ML training/inference engineering (bottleneck analysis, throughput/memory, distributed hangs at cluster scale, fault tolerance), use the companion skill: [Machine Learning Engineering](https://github.com/stas00/ml-engineering/blob/master/SKILL.md).
+- For large-scale ML training/inference engineering (bottleneck analysis, throughput/memory, distributed hangs at cluster scale, fault tolerance), use the companion skill: [Machine Learning Engineering](https://github.com/stas00/ml-engineering/blob/master/skills/ml-engineering/SKILL.md).

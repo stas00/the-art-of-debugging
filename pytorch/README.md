@@ -3987,7 +3987,7 @@ If you're working with other devices, most of them have similar or identical API
 
 Here are good practical examples of measuring time durations with the help of device events:
 - [mamf-finder](https://github.com/stas00/ml-engineering/blob/master/compute/accelerator/benchmarks/mamf-finder.py)
-- [all_reduce_bench](https://github.com/stas00/ml-engineering/blob/master/network/benchmarks/all_reduce_bench.py)
+- [torch-dist-bench](https://github.com/stas00/ml-engineering/blob/master/network/benchmarks/torch-dist-bench.py)
 
 Here are some excellent articles going into deeper explanations and examples:
 - [How to Accurately Time CUDA Kernels in Pytorch](https://www.speechmatics.com/company/articles-and-news/timing-operations-in-pytorch)
