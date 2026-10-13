@@ -7,7 +7,7 @@ The techniques in this chapter fall into a few families, and picking the right o
 - **Print-based** ([q](#q), [printing object variables](#printing-object-variables), [auto-print](#auto-print-whats-being-observed), [who is calling?](#who-is-calling)) - inject output into the code and re-run. Cheap, needs no tooling, and it keeps working when the program is spread over many processes. Often it's the only practical option inside a tight loop or a hot path, where stopping at a breakpoint on every iteration would take forever. The cost is a re-run for each new question.
 - **Interactive** ([pdb attach](#attaching-pdb-to-a-running-process), [IPython `embed()`](#dropping-into-ipython-with-embed), [ipdb](#ipdb), [IDE debuggers](#ide-debuggers), [remote debugging](#remote-debugging)) - stop the program and ask it anything, without re-running. Best when the state is complex or you don't yet know what to print, since one stop answers many questions. The cost is that it halts the process, which gets awkward in multi-process runs.
 - **Observing from the outside** ([py-spy](#py-spy)) - read the stack of a process that is already running, without stopping or modifying it. This is the one to reach for when a program is already hung and you can't afford to restart it.
-- **Profilers** ([cProfile](#cprofile), [line_profiler](#line_profiler)) - for when nothing is broken except the speed, and the question is where the time actually goes.
+- **Profilers** ([cProfile](#cprofile), [line_profiler](#line_profiler), [profiling.sampling](#profilingsampling)) - for when nothing is broken except the speed, and the question is where the time actually goes.
 
 As a rough rule of thumb: print when the question is "what is this value, across many iterations"; an interactive debugger when it's "what on earth is going on here, right now"; `py-spy` when the program is already stuck; and a profiler when the only symptom is slowness.
 
@@ -596,6 +596,8 @@ Let's look at some of the useful Python profilers.
 
 cProfile is a built-in profiler that is quite easy to use. The full documentation is [here](https://docs.python.org/3/library/profile.html).
 
+As of Python 3.15 the implementation lives in `profiling.tracing`, and `cProfile` imports it. `python -m cProfile` and `python -m profiling.tracing` print the same report, and `cProfile.Profile()` still works, so the examples below are unchanged.
+
 #### Command line
 
 The simplest way of trying it out is to run your existing program with `-m cProfile`. Assuming the program is:
@@ -965,3 +967,51 @@ Lower the sampling rate with `-r` when that happens - the default is 100 samples
 Finally, `py-spy record -f speedscope` writes the profile for [speedscope](https://www.speedscope.app/) instead of an SVG, which adds a time-ordered view of the samples that a flame graph deliberately discards. Here is what it looks like (width truncated to fit):
 
 ![py-spy flame graph speedscope](images/py-spy-flamegraph-speedscope.png)
+
+### profiling.sampling
+
+Python 3.15 added a sampling profiler to the standard library, `profiling.sampling`. It does the same job as [`py-spy record`](#flame-graphs-with-py-spy): it reads stack traces from outside the process at a fixed rate, so the program is not instrumented and the overhead stays low. It requires Python 3.15 or higher. `py-spy` remains the profiler for interpreters older than 3.15, and it is also the one that shows frames inside C and C++ extensions.
+
+Launch the same program as above:
+
+```bash
+python -m profiling.sampling run -d 2 --no-summary profile_me.py
+```
+
+```
+Captured 2001 samples in 2.00 seconds
+Sample rate: 1000.47 samples/sec
+Error rate: 15.29
+Profile Stats:
+       nsamples   sample%  tottime (ms)    cumul%   cumtime (s)  filename:lineno(function)
+        952/952      56.2       952.000      56.2         0.952  profile_me.py:3(tokenize)
+        384/384      22.7       384.000      22.7         0.384  profile_me.py:6(embed.<locals>.<genexpr>)
+        337/721      19.9       337.000      42.5         0.721  profile_me.py:6(embed)
+         22/1695       1.3        22.000     100.0         1.695  profile_me.py:9(step)
+          0/1695       0.0         0.000     100.0         1.695  profile_me.py:12(<module>)
+```
+
+`nsamples` is two counts, samples in which the function was the one executing, over samples in which it was anywhere on the stack. The line number is the line that was executing, same as in the flame graph above, so `tokenize` is line 3 and both `embed` and its generator expression are line 6.
+
+The error rate is the share of samples dropped because the copied stack could not be walked. The profiler copies the target's frame list, a chain of pointers rewritten on every call and return, while the target is still running. A tight loop can change a pointer mid-copy, and the walker then sees a chain that matches no single moment. It reports that as corrupted remote memory and drops the sample. The process's memory is intact; the copy mixed two moments. That is why `profile_me.py` came out at 15%, and the percentages above are among the samples that were kept. A process blocked in `time.sleep` is not rewriting those pointers, and the same run there had an error rate of 0.00. `--blocking` pauses the target's threads before each copy and brought the loop's error rate down to 2%.
+
+For a job that is already running, `python -m profiling.sampling attach PID` samples it, and `python -m profiling.sampling dump PID` prints the stack once:
+
+```
+Stack dump for PID 126649, thread 126649 (main thread, has GIL, on CPU; most recent call last):
+  File "/tmp/py315-prof/profile_me.py", line 12, in <module>
+    step()
+  File "/tmp/py315-prof/profile_me.py", line 9, in step
+    return embed(tokenize(20000))
+```
+
+That is the question [`py-spy dump`](../pytorch/README.md#py-spy) answers. Both commands read the target process's memory, so they need the same permission as `py-spy`. If it is missing, the error names `ptrace_scope`, and the fix is the one in that section.
+
+The GIL filter is already `py-spy record -g`. Four things `py-spy` does not do:
+
+1. `--mode cpu` keeps only samples where the thread was on CPU, and `--mode exception` keeps only samples taken while an exception is active. A wait on a lock or the network then drops out of the profile.
+2. `--async-aware` rebuilds the asyncio task stack. `py-spy` shows the thread, which for an async program is the event loop waiting in `select`.
+3. `--opcodes` records which bytecode instruction was executing.
+4. `--heatmap` writes line-level sample counts, `--diff-flamegraph` compares two profiles, and `--gecko` writes a profile the Firefox Profiler can open.
+
+`--native` does not show C frames. It inserts an artificial `<native>` marker where Python called out of the interpreter, so a PyTorch stack still needs `py-spy --native` to see the `at::` frames.
